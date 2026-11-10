@@ -33,7 +33,7 @@ jobs:
           ./windows/build-release.ps1 -NodeExe $node
 
       - name: Upload build artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: windows-release
           path: dist/*.*
