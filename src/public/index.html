@@ -1,0 +1,1736 @@
+<!doctype html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mikrotik Traffic Control</title>
+<link rel="icon" type="image/svg+xml" href="assets/mtc-logo.svg">
+<script src="i18n.js"></script>
+<style>
+:root{
+  --bg:#f4f6f9; --card:#fff; --ink:#1b2430; --mute:#6b7685; --line:#e3e8ee; --hover:#f0f4fa;
+  --down:#2a7de1; --up:#e0780a; --ok:#1f9d55; --bad:#d64545; --accent:#2a7de1;
+  --shadow:0 1px 2px rgba(20,30,50,.06);
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171e; --card:#1a212b; --ink:#e6ebf2; --mute:#8d99aa; --line:#2a3340; --hover:#222b37;
+  --down:#5aa2ff; --up:#ffa94d; --ok:#4cc27f; --bad:#ff6b6b; --accent:#5aa2ff; --shadow:none;
+}}
+:root[data-theme="dark"]{
+  --bg:#12171e; --card:#1a212b; --ink:#e6ebf2; --mute:#8d99aa; --line:#2a3340; --hover:#222b37;
+  --down:#5aa2ff; --up:#ffa94d; --ok:#4cc27f; --bad:#ff6b6b; --accent:#5aa2ff; --shadow:none;
+}
+*{box-sizing:border-box}
+@font-face{font-family:Vazirmatn;font-weight:100 900;font-display:swap;src:url(assets/fonts/vazirmatn-arabic-wght.woff2) format("woff2");unicode-range:U+0600-06FF,U+200C-200F,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FEFF}
+html,body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.4 "Segoe UI",Vazirmatn,system-ui,"Microsoft YaHei","PingFang SC",sans-serif}
+button,input,select{font:inherit;color:inherit}
+header{display:flex;align-items:center;gap:16px;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5;flex-wrap:wrap}
+h1{font-size:16px;margin:0;font-weight:600;letter-spacing:.2px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:5px 12px;cursor:pointer;color:var(--mute)}
+.seg button+button{border-inline-start:1px solid var(--line)}
+.seg button.on{background:var(--accent);color:#fff}
+.spacer{flex:1}
+.status{display:flex;align-items:center;gap:6px;color:var(--mute);font-size:12.5px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--bad)}
+.dot.ok{background:var(--ok)}
+main{padding:16px 20px;max-width:1500px;margin:0 auto}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 6px;font-size:12px;font-weight:500;color:var(--mute);text-transform:uppercase;letter-spacing:.5px}
+.big{font-size:24px;font-weight:600;font-variant-numeric:tabular-nums}
+.sub{color:var(--mute);font-size:12.5px;margin-top:2px}
+.dn{color:var(--down)} .upc{color:var(--up)}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px;box-shadow:var(--shadow);margin-bottom:14px}
+.panel h2{margin:0 0 8px;font-size:14px;font-weight:600;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.legend{font-weight:400;color:var(--mute);font-size:12.5px;display:inline-flex;gap:12px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-inline-end:4px;vertical-align:-1px}
+.chartwrap{position:relative}
+canvas{display:block;width:100%}
+.tip{position:absolute;pointer-events:none;background:var(--card);border:1px solid var(--line);border-radius:6px;padding:5px 8px;font-size:12px;box-shadow:0 2px 8px rgba(0,0,0,.18);white-space:nowrap;display:none;z-index:3}
+.tools{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+input[type=search],select{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:5px 10px}
+input[type=search]{min-width:220px}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px 10px;text-align:end;white-space:nowrap;font-variant-numeric:tabular-nums}
+th{font-weight:500;color:var(--mute);font-size:12px;text-transform:uppercase;letter-spacing:.4px;cursor:pointer;user-select:none;border-bottom:1px solid var(--line);position:sticky;top:76px;background:var(--card)}
+th.l,td.l{text-align:start}
+th.sorted::after{content:" \25BE"} th.sorted.asc::after{content:" \25B4"}
+tbody tr{cursor:pointer;border-bottom:1px solid var(--line)}
+tbody tr:hover{background:var(--hover)}
+tbody tr.sel{background:var(--hover)}
+.nm{font-weight:500} .ipx{color:var(--mute);font-size:12px}
+.idle{color:var(--mute)}
+.bar{height:6px;border-radius:3px;background:var(--line);min-width:120px;overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+#detail{position:fixed;top:0;inset-inline-end:0;bottom:30px;width:min(640px,100vw);background:var(--bg);border-inline-start:1px solid var(--line);box-shadow:-6px 0 24px rgba(0,0,0,.2);transform:translateX(calc(105% * var(--sx,1)));transition:transform .18s;z-index:10;overflow:auto;padding:16px}
+#detail.open{transform:none}
+.dh{display:flex;align-items:flex-start;gap:10px;margin-bottom:12px}
+.dh .t{flex:1}
+.dh .t b{font-size:18px}
+.x{border:0;background:transparent;font-size:22px;cursor:pointer;color:var(--mute);line-height:1}
+.mini{border:1px solid var(--line);background:var(--card);border-radius:6px;padding:2px 8px;cursor:pointer;font-size:12px;color:var(--mute)}
+.grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:12px}
+.empty{color:var(--mute);padding:20px;text-align:center}
+/* connection problem: a floating pill, it never pushes the page content down */
+.err{position:fixed;top:88px;left:50%;transform:translateX(-50%);z-index:30;max-width:min(680px,calc(100vw - 32px));background:var(--card);color:var(--ink);border:1px solid var(--bad);border-left:5px solid var(--bad);border-radius:10px;padding:9px 16px;font-size:13px;box-shadow:0 6px 24px rgba(0,0,0,.22);display:none;pointer-events:none}
+#toasts{position:fixed;inset-inline-end:16px;bottom:44px;display:flex;flex-direction:column;gap:8px;z-index:60;width:min(380px,calc(100vw - 32px));pointer-events:none}
+.toast{background:var(--card);color:var(--ink);border:1px solid var(--line);border-left:5px solid var(--accent);border-radius:10px;padding:10px 14px;font-size:13px;box-shadow:0 8px 28px rgba(0,0,0,.25);animation:toastin .2s ease-out;pointer-events:auto;white-space:pre-line}
+.toast.bad{border-left-color:var(--bad)} .toast.ok{border-left-color:var(--ok)}
+.toast.out{opacity:0;transform:translateY(6px);transition:.25s}
+@keyframes toastin{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes fadein{from{opacity:0}to{opacity:1}}
+@keyframes popin{from{opacity:0;transform:translateY(10px) scale(.97)}to{opacity:1;transform:none}}
+@keyframes rowin{from{background:var(--hover)}to{background:transparent}}
+tr.newrow{animation:rowin 1.2s ease-out}
+.modal{backdrop-filter:blur(3px);animation:fadein .15s ease-out}
+.mbox{animation:popin .18s ease-out;box-shadow:0 18px 60px rgba(0,0,0,.35)}
+.dlg{width:min(430px,100%)} .dlg b{font-size:16px}
+.dlg .msg{margin:8px 0 14px;font-size:13.5px;color:var(--mute);white-space:pre-line}
+.dlg input{width:100%;margin-bottom:12px}
+.dlg .tools{justify-content:flex-end;margin:0}
+tbody tr{transition:background .15s}
+td,th{transition:color .2s}
+.brand{display:flex;align-items:center;gap:10px}
+.brand h1{line-height:1.15;white-space:nowrap} .brand h1 small{display:block;font-size:11.5px;font-weight:500;color:var(--mute);letter-spacing:.6px;text-transform:uppercase}
+.logo{height:54px;width:auto;display:block}
+.rsel{display:flex;gap:6px;align-items:center}
+.rsel select{max-width:210px;font-weight:600}
+main{padding-bottom:44px}
+#foot{position:fixed;left:0;right:0;bottom:0;height:30px;background:var(--card);border-top:1px solid var(--line);display:flex;align-items:center;gap:16px;padding:0 20px;font-size:12px;color:var(--mute);z-index:8}
+#foot .fmid{flex:1;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#foot a{color:var(--mute);text-decoration:none} #foot a:hover{color:var(--accent);text-decoration:underline}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:20;display:flex;align-items:flex-start;justify-content:center;padding:6vh 16px;overflow:auto}
+.modal[hidden]{display:none}
+.mbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;width:min(760px,100%)}
+.form{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.form label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
+.form input{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 10px;color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--card);border-radius:8px;padding:6px 14px;cursor:pointer}
+.btn.pri{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn:disabled{opacity:.5;cursor:default}
+#rtbl td,#rtbl th{padding:6px 8px}
+.chip{display:inline-block;border-radius:10px;padding:1px 8px;font-size:11.5px;font-weight:500;background:var(--hover);color:var(--ink);border:1px solid var(--line);margin-block:1px;margin-inline:0 3px;white-space:normal}
+.chip.high{background:var(--bad);border-color:var(--bad);color:#fff}
+.chip.medium{background:var(--up);border-color:var(--up);color:#fff}
+.chip.low{background:var(--mute);border-color:var(--mute);color:#fff}
+.chip.blocked{background:transparent;border-color:color-mix(in srgb,var(--bad) 45%,transparent);color:color-mix(in srgb,var(--bad) 75%,var(--fg,currentColor));font-weight:400;font-size:.85em;padding-block:0}
+tr.blk{background:color-mix(in srgb,var(--bad) 3%,transparent)}
+tr.blk td:first-child{box-shadow:inset 2px 0 0 color-mix(in srgb,var(--bad) 55%,transparent)}
+tr.blk:hover{background:color-mix(in srgb,var(--bad) 6%,transparent)}
+.badge{display:inline-block;min-width:17px;padding:0 5px;border-radius:9px;background:var(--bad);color:#fff;font-size:11px;line-height:17px;text-align:center;margin-inline-start:5px}
+.badge.zero{display:none}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cols2 .panel{margin-bottom:14px}
+.tb{display:flex;align-items:center;gap:8px;margin:3px 0;font-size:12.5px}
+.tb .l{width:150px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb .bar{flex:1;min-width:60px;height:10px}
+.tb .v{width:150px;flex:none;text-align:end;color:var(--mute);font-variant-numeric:tabular-nums;white-space:nowrap}
+.wrapc{white-space:normal;max-width:520px;text-align:left}
+tr.subrow td{background:var(--hover);padding:6px 14px;white-space:normal;text-align:left}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+.warnbar{background:var(--hover);border:1px solid var(--up);border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:13px}
+.days label{margin-inline-end:8px;font-size:12.5px;color:var(--ink);flex-direction:row;align-items:center;gap:3px;display:inline-flex}
+/* Live tab: cards + graph stay put, only the device list scrolls (list gets at least 220px; on a very small window the page scrolls instead) */
+#v-live:not([hidden]){display:flex;flex-direction:column;height:calc(100vh - var(--hh,90px) - 62px);min-height:560px}
+#v-live .cards,#v-live .panel{flex:none}
+#v-live .cards{margin-bottom:10px}
+#v-live .panel{margin-bottom:10px}
+#v-live #livelist{flex:1 1 auto;min-height:220px;display:flex;flex-direction:column;margin-bottom:0;overflow:hidden}
+#v-live .tblscroll{flex:1 1 auto;min-height:0;overflow:auto;margin:0 -14px;padding:0 14px}
+#v-live .tblscroll th{top:0;z-index:2}
+.chip.quota{background:var(--bad);border-color:var(--bad);color:#fff}
+tr.sgrp{cursor:pointer} tr.sgrp .car{display:inline-block;width:12px;color:var(--mute);transition:transform .15s} tr.sgrp.open .car{transform:rotate(90deg)}
+tr.sgrp td{vertical-align:top}
+tr.sgdet td{background:var(--hover);padding:2px 14px 8px 34px;white-space:normal}
+tr.sgdet table{width:100%} tr.sgdet th{position:static;cursor:default;background:transparent;padding:3px 8px}
+tr.sgdet td.l,tr.sgdet th.l{padding-left:8px}
+/* right-to-left languages (fa, ar): numbers, addresses and rates stay left-to-right and readable; mixed text resolves by its first letter */
+:root[dir=rtl]{--sx:-1}
+:root[dir=rtl] td:not(.l){direction:ltr}
+:root[dir=rtl] span.ipx,:root[dir=rtl] .nm,:root[dir=rtl] .chip{unicode-bidi:plaintext}
+:root[dir=rtl] .big{direction:ltr;unicode-bidi:isolate}
+:root[dir=rtl] .card .big,:root[dir=rtl] .card .sub{text-align:right}
+:root[dir=rtl] .seg button,:root[dir=rtl] .sub,:root[dir=rtl] #fmid,:root[dir=rtl] #stat,:root[dir=rtl] label.ipx,:root[dir=rtl] .legend{unicode-bidi:plaintext}
+:root[dir=rtl] .copy{direction:ltr;unicode-bidi:isolate}
+:root[dir=rtl] .tip{direction:ltr;text-align:left}
+:root[dir=rtl] canvas{direction:ltr}
+:root[dir=rtl] tr.sgrp .car{transform:scaleX(-1)} :root[dir=rtl] tr.sgrp.open .car{transform:scaleX(-1) rotate(90deg)}
+:root[dir=rtl] input[type=search]{text-align:start}
+/* splash screen */
+#splash{position:fixed;inset:0;z-index:200;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;transition:opacity .45s ease,visibility .45s;text-align:center}
+#splash.out{opacity:0;visibility:hidden;pointer-events:none}
+#splash img{width:112px;height:112px;animation:popin .6s ease-out}
+#splash h1{font-size:26px;margin:6px 0 0;letter-spacing:.3px} #splash .tag{color:var(--mute);font-size:13.5px;max-width:420px;padding:0 16px}
+#splash .bar2{width:210px;height:4px;border-radius:2px;background:var(--line);overflow:hidden;margin-top:14px} #splash .bar2 i{display:block;height:100%;width:40%;background:var(--accent);border-radius:2px;animation:slide 1.1s ease-in-out infinite}
+@keyframes slide{0%{margin-inline-start:-40%}100%{margin-inline-start:100%}}
+#splash .cr{position:absolute;bottom:22px;color:var(--mute);font-size:12.5px} #splash .cr a{color:var(--mute);text-decoration:none}
+.wiz-step{display:none} .wiz-step.on{display:block}
+.wizdots{display:flex;gap:6px;justify-content:center;margin:2px 0 10px} .wizdots i{width:28px;height:4px;border-radius:2px;background:var(--line)} .wizdots i.on{background:var(--accent)}
+.rolebtn{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden} .rolebtn label{padding:3px 10px;cursor:pointer;font-size:12.5px;display:flex;gap:4px;align-items:center;color:var(--mute)} .rolebtn label+label{border-inline-start:1px solid var(--line)} .rolebtn input{margin:0} .rolebtn label.on{background:var(--accent);color:#fff}
+#af-hours label,#wz-hours label{flex-direction:row;display:inline-flex;gap:6px;align-items:center;color:var(--ink);font-size:13px}
+#af-hours .tools,#wz-hours .tools{margin:0 0 6px}
+.hrs{width:auto;margin:4px 0} .hrs td{white-space:nowrap}
+.hrs td{padding:3px 8px} .hrs input[type=time]{width:130px}
+@media(max-width:900px){.cols2{grid-template-columns:1fr}}
+@media(max-width:700px){.grid2,.form{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="splash"><img src="assets/mtc-logo.svg" alt=""><h1>Mikrotik Traffic Control</h1><div class="tag">Live traffic, usage quotas, bandwidth control, guest Wi-Fi and security for MikroTik networks</div><div class="bar2"><i></i></div><div class="cr">&copy; <span class="yr2"></span> <a href="https://kish-it.com" target="_blank" rel="noopener">Kish IT</a> &middot; kish-it.com</div></div>
+<div class="err" id="err"></div>
+<div id="toasts"></div>
+<div id="dlg" class="modal" hidden style="z-index:70"><div class="mbox dlg"><b id="dlg-t"></b><div class="msg" id="dlg-m"></div><input id="dlg-i" hidden autocomplete="off"><div class="tools"><button class="btn" id="dlg-no">Cancel</button><button class="btn pri" id="dlg-ok">OK</button></div></div></div>
+<header>
+  <div class="brand"><img src="assets/mtc-logo.svg" id="brandlogo" alt="" class="logo" style="height:42px"><h1><span id="orgname">Mikrotik Traffic Control</span><small id="prodname">Mikrotik Traffic Control</small></h1></div>
+  <select id="lang" title="Language" style="font-weight:600"><option value="en">English</option><option value="fa">فارسی</option><option value="ar">العربية</option><option value="ru">Русский</option><option value="zh">中文</option></select>
+  <div class="rsel" title="Router"><select id="router"></select><button class="mini" id="manage">Manage routers</button></div>
+  <div class="seg" id="tabs"><button data-v="live" class="on">Live</button><button data-v="staff">Staff</button><button data-v="usage">Usage history</button><button data-v="dest">Destinations</button><button data-v="ext">External IPs</button><button data-v="abuse">Abuse</button><button data-v="sec">Security<span class="badge zero" id="bg-sec">0</span></button><button data-v="blocked">Blocked<span class="badge zero" id="bg-blk">0</span></button><button data-v="pres">Online / Offline<span class="badge zero" id="bg-off">0</span></button><button data-v="privacy">VPN &amp; MACs</button><button data-v="audit">Audit</button><button data-v="reports">Reports</button><button data-v="wifi">Guest Wi-Fi</button><button data-v="setup">Router setup</button><button data-v="config">Configuration</button></div>
+  <div class="seg" id="scope" title="Which traffic to count"><button data-v="inet" class="on">Internet</button><button data-v="lan">LAN</button><button data-v="all">All</button></div>
+</header>
+<main>
+  <section id="v-live">
+    <div class="cards">
+      <div class="card"><h3>Download now</h3><div class="big dn" id="c-dn">-</div><div class="sub" id="c-dn2"></div></div>
+      <div class="card"><h3>Upload now</h3><div class="big upc" id="c-up">-</div><div class="sub" id="c-up2"></div></div>
+      <div class="card"><h3>Today</h3><div class="big" id="c-today">-</div><div class="sub" id="c-today2"></div></div>
+      <div class="card"><h3>Active devices</h3><div class="big" id="c-dev">-</div><div class="sub" id="c-dev2"></div></div>
+    </div>
+    <div class="panel">
+      <h2><span>All devices - <span id="t-title">last 20 minutes</span></span>
+        <div class="seg" id="trange"><button data-v="live">20 min</button><button data-v="1h">1 h</button><button data-v="6h">6 h</button><button data-v="24h">24 h</button><button data-v="7d">7 d</button><button data-v="30d">30 d</button></div>
+        <label class="ipx">Scale <select id="tscale"><option value="auto">Auto</option><option value="10">10 Mbps</option><option value="25">25 Mbps</option><option value="50">50 Mbps</option><option value="100">100 Mbps</option><option value="250">250 Mbps</option><option value="500">500 Mbps</option><option value="1000">1 Gbps</option><option value="custom">Custom...</option></select></label>
+        <input id="tcustom" inputmode="decimal" style="width:70px" hidden title="Top of the graph in Mbps"> <span class="ipx" id="tcustom-u" hidden>Mbps</span>
+        <button class="mini" id="treset" title="Back to the default: live 20 minutes, automatic scale">Reset</button>
+        <span class="legend"><span><i style="background:var(--down)"></i>Download</span><span><i style="background:var(--up)"></i>Upload</span></span></h2>
+      <div class="chartwrap"><canvas id="ch-total" height="190"></canvas><div class="tip"></div></div>
+    </div>
+    <div class="panel" id="livelist">
+      <div class="tools">
+        <input type="search" id="q" placeholder="Search name, IP, MAC...">
+        <select id="vf"><option value="">All networks</option></select>
+        <select id="sf" title="Status filter"><option value="">Any status</option><option value="blocked">Blocked only</option><option value="limited">Speed-limited only</option></select>
+        <label class="ipx"><input type="checkbox" id="onlyact" checked> only devices active in the last 5 min</label>
+        <span class="ipx" id="count"></span>
+      </div>
+      <div class="tblscroll">
+      <table id="tbl"><thead><tr>
+        <th class="l" data-k="name">Device</th><th class="l" data-k="vlan">Network</th>
+        <th data-k="down" class="sorted">Download</th><th data-k="up">Upload</th><th>Last 3 min</th>
+        <th data-k="tdown">Today down</th><th data-k="tup">Today up</th><th data-k="ttot" title="Today's internet usage of this device: download + upload">Today total</th><th data-k="conns">Conns</th><th></th>
+      </tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-staff" hidden>
+    <div class="panel">
+      <div class="tools">
+        <b>Period</b>
+        <div class="seg" id="spreset"><button data-v="today">Today</button><button data-v="yesterday">Yesterday</button><button data-v="week">This week</button><button data-v="7d" class="on">Last 7 days</button><button data-v="month">This month</button><button data-v="lmonth">Last month</button><button data-v="30d">Last 30 days</button><button data-v="all">All time</button></div>
+        <input type="date" id="sfrom"> <span class="ipx">to</span> <input type="date" id="sto">
+        <input type="search" id="sq" placeholder="Search staff / PC...">
+        <a class="mini" id="sexport" href="#" style="text-decoration:none">Export CSV</a>
+      </div>
+      <div class="cards" style="margin:8px 0 0">
+        <div class="card"><h3>Staff total</h3><div class="big" id="s-tot">-</div><div class="sub" id="s-tot2"></div></div>
+        <div class="card"><h3>Staff devices</h3><div class="big" id="s-n">-</div><div class="sub" id="s-n2"></div></div>
+        <div class="card"><h3>Average per device</h3><div class="big" id="s-avg">-</div><div class="sub" id="s-avg2"></div></div>
+        <div class="card"><h3>Busiest day</h3><div class="big" id="s-peak">-</div><div class="sub" id="s-peak2"></div></div>
+      </div>
+    </div>
+    <div class="panel">
+      <h2><span id="s-title">All staff - usage per day</span> <button class="mini" id="s-reset" hidden>show all staff</button> <span class="legend"><span><i style="background:var(--down)"></i>Download</span><span><i style="background:var(--up)"></i>Upload</span></span></h2>
+      <div class="chartwrap"><canvas id="ch-staff" height="210"></canvas><div class="tip"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Usage per staff device <span class="ipx" id="s-count"></span></h2>
+      <table id="stbl"><thead><tr><th class="l">#</th><th class="l">Staff / PC</th><th class="l">Network</th><th>Days active</th><th>Download</th><th>Upload</th><th>Total</th><th>Avg / active day</th><th class="l" style="min-width:120px">Share</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:8px">Staff = devices on the office PC and staff WiFi networks, plus any device you mark as staff. Devices with the same MAC address are merged even if their IP changed. Click a row to see its days; double-click the name to rename.</div>
+    </div>
+  </section>
+
+  <section id="v-dest" hidden>
+    <div class="panel">
+      <div class="tools"><b>The other side of the internet</b>
+        <div class="seg" id="dperiod"><button data-v="now" class="on">Right now</button><button data-v="today">Today</button><button data-v="yesterday">Yesterday</button><button data-v="7d">7 days</button><button data-v="30d">30 days</button></div>
+        <input type="search" id="dq" placeholder="Search IP, name, type...">
+      </div>
+      <div class="ipx">Destination types are an estimate from well-known networks, reverse-DNS names and ports. Many CDN / cloud addresses stay "Other / Unknown". Names fill in as addresses are looked up.</div>
+    </div>
+    <div class="cols2">
+      <div class="panel"><h2 id="dtypes-t">Destination types</h2><div id="dtypes"></div></div>
+      <div class="panel"><h2>Concurrent connections <div class="seg" id="crange"><button data-v="live" class="on">20 min</button><button data-v="1h">1 h</button><button data-v="24h">24 h</button><button data-v="7d">7 d</button></div>
+        <span class="legend"><span><i style="background:var(--down)"></i>All</span><span><i style="background:var(--up)"></i>To internet</span></span></h2>
+        <div class="chartwrap"><canvas id="ch-conc" height="190"></canvas><div class="tip"></div></div></div>
+    </div>
+    <div class="panel"><h2 id="dtitle">Top destinations</h2>
+      <table id="dtbl"><thead><tr><th class="l">Destination</th><th class="l">Organisation</th><th class="l">Type</th><th id="dh-down">Download</th><th id="dh-up">Upload</th><th>Devices</th><th id="dh-c">Conns</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">Click a destination to see which devices talk to it.</div></div>
+    <div class="panel" id="dcpanel"><h2>Most concurrent connections - by destination (right now)</h2>
+      <table id="dctbl"><thead><tr><th class="l">Destination</th><th class="l">Organisation</th><th class="l">Type</th><th>Connections</th><th>Devices</th><th>Download</th><th></th></tr></thead><tbody></tbody></table></div>
+    <div class="panel"><h2>Devices by concurrent connections (right now)</h2>
+      <table id="cdtbl"><thead><tr><th class="l">Device</th><th class="l">Network</th><th>All conns</th><th>To internet</th><th>Distinct internet hosts</th><th>Peak today</th><th>Peak hosts today</th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section id="v-ext" hidden>
+    <div class="panel">
+      <div class="tools"><b>External IP addresses</b>
+        <div class="seg" id="xperiod"><button data-v="1">Today</button><button data-v="7" class="on">7 days</button><button data-v="30">30 days</button><button data-v="120">120 days</button></div>
+        <div class="seg" id="xsrc"><button data-v="all" class="on">All</button><button data-v="router">Reached / logged on the router</button><button data-v="scanners">On router trap lists</button><button data-v="devices">Contacted by our devices</button></div>
+        <input type="search" id="xq" placeholder="Search IP, owner, country, AS...">
+        <button class="mini" id="x-all" title="Look up whois for every address in this list that has no record yet">Look up all</button>
+        <a class="mini" id="x-csv" href="#" style="text-decoration:none">Export CSV</a>
+      </div>
+      <div class="ipx" id="x-info"></div>
+    </div>
+    <div class="panel"><h2 id="x-title">Addresses</h2>
+      <table id="xtbl"><thead><tr><th class="l">Address</th><th class="l">Country</th><th class="l">Owner (whois)</th><th class="l">Network / AS</th><th class="l">Seen by</th><th>Our traffic</th><th class="l">Last</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">Sources: <b>router log</b> = every outside address that appears in the router's log (failed logins, IPsec probes, firewall log rules; kept per day here even after the router's log rolls over, counted from the first time this version ran), <b>trap lists</b> = the router's port-scanner / SSH / telnet blacklists, <b>our devices</b> = outside hosts our devices talked to. Owner data comes from RDAP / whois (cached 90 days); only the address being looked up is sent. Click a row or Whois for the full record.</div></div>
+  </section>
+
+  <section id="v-abuse" hidden>
+    <div class="panel">
+      <div class="tools"><b>Find abusive usage</b>
+        <div class="seg" id="agroup"><button data-v="staff" class="on">Staff (working hours)</button><button data-v="guest">Guests / visitors (all day)</button></div>
+        <div class="seg" id="aperiod"><button data-v="today" class="on">Today</button><button data-v="yesterday">Yesterday</button><button data-v="7d">7 days</button><button data-v="30d">30 days</button></div>
+        <label class="ipx"><input type="checkbox" id="aall"> show all devices, not only flagged</label>
+        <button class="mini" id="a-settings">Limits &amp; working hours</button>
+      </div>
+      <div class="ipx" id="a-info"></div>
+      <div class="cards" style="margin:10px 0 0">
+        <div class="card"><h3>Devices checked</h3><div class="big" id="a-n">-</div></div>
+        <div class="card"><h3>Flagged</h3><div class="big upc" id="a-f">-</div></div>
+        <div class="card"><h3>Internet used</h3><div class="big" id="a-t">-</div></div>
+        <div class="card"><h3>Typical device (median)</h3><div class="big" id="a-m">-</div></div>
+      </div>
+    </div>
+    <div class="panel"><div id="a-warn" class="warnbar" hidden></div>
+      <table id="atbl"><thead><tr><th class="l">Device</th><th class="l">Network</th><th>Total</th><th>Down</th><th>Up</th><th>Busy min</th><th>Peak Mbps</th><th>Peak conns</th><th id="a-offh">Off-hours</th><th class="l">Why flagged</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">Internet traffic only. "Busy minute" = a minute with at least the configured MB of traffic (streaming / downloading). Click a row for the device's graphs and destinations.</div></div>
+  </section>
+
+  <section id="v-sec" hidden>
+    <div class="cards">
+      <div class="card"><h3>New high alerts (24 h)</h3><div class="big upc" id="s-high">-</div></div>
+      <div class="card"><h3>Events in period</h3><div class="big" id="s-ev">-</div><div class="sub" id="s-ev2"></div></div>
+      <div class="card"><h3>Outside scanners on router lists</h3><div class="big" id="s-ext">-</div><div class="sub" id="s-ext2"></div></div>
+      <div class="card"><h3>Internal sources in router log</h3><div class="big" id="s-int">-</div><div class="sub">failed router logins from inside</div></div>
+    </div>
+    <div class="panel">
+      <div class="tools"><b>Suspicious devices inside the network</b>
+        <select id="sdays"><option value="1">last 24 h</option><option value="7" selected>last 7 days</option><option value="30">last 30 days</option><option value="365">last year</option></select>
+        <label class="ipx"><input type="checkbox" id="sack"> include acknowledged</label>
+        <button class="mini" id="sec-ackall">Acknowledge all</button>
+      </div>
+      <table id="setbl"><thead><tr><th class="l">Device</th><th title="Number of security events recorded for this device in the period">Events</th><th class="l">What happened (times)</th><th class="l">Worst</th><th class="l">Last seen</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">One row per device with all of its events combined and how often each kind happened; click a row to see the individual events. Detected from the router's connection table: scans (many unanswered attempts), local-network sweeps, brute-force patterns, connection floods and attempts on router management ports. Servers that legitimately scan (monitoring servers, controllers) are on the ignore list.</div>
+    </div>
+    <div class="cols2">
+      <div class="panel"><h2>Outside attackers caught by the router's traps <div class="seg" id="rlist"><button data-v="port scanners" class="on">Port scanners</button><button data-v="ssh_blacklist">SSH</button><button data-v="telnet_blacklist">Telnet</button></div></h2>
+        <table id="rltbl"><thead><tr><th class="l">Address</th><th class="l">Listed for another</th><th></th></tr></thead><tbody></tbody></table></div>
+      <div class="panel"><h2>Router log: who is knocking</h2>
+        <table id="lgtbl"><thead><tr><th class="l">Source</th><th class="l">What</th><th>Count</th><th class="l">Last</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="panel"><h2>Ignored / protected</h2><div class="ipx" id="s-ign"></div></div>
+  </section>
+
+  <section id="v-blocked" hidden>
+    <div class="panel"><div id="bi-warn" class="warnbar" hidden></div>
+      <h2>Blocked internet addresses (attackers / knockers) <span class="ipx" id="bi-count"></span></h2>
+      <div class="tools"><input id="bi-addr" placeholder="e.g. 178.128.196.80 or 45.79.0.0/16" style="min-width:250px"><select id="bi-dur"><option value="1440">24 hours</option><option value="10080" selected>7 days</option><option value="43200">30 days</option><option value="0">until I unblock</option></select><input id="bi-note" placeholder="note (optional)" style="min-width:200px"><button class="btn danger" id="bi-go">Block address</button><span class="ipx" id="bi-msg"></span></div>
+      <table id="bitbl" style="margin-top:8px"><thead><tr><th class="l">Address</th><th class="l">Note on router</th><th class="l">Unblocks in</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">Block a single address or a range (/16 to /32). Everything from it to the router and the internal network is dropped, and local devices cannot reach it. Also available as a Block button next to outside addresses in Destinations, Security and the device panel. Never blockable: private addresses, this router's own public address, the ISP gateway and the DNS servers in use.</div></div>
+    <div class="panel"><div id="b-warn" class="warnbar" hidden></div>
+      <h2>Blocked from the internet <span class="ipx" id="b-count"></span></h2>
+      <table id="btbl"><thead><tr><th class="l">Device</th><th class="l">Network</th><th class="l">Note on router</th><th class="l">Unblocks in</th><th></th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">A blocked device keeps its local network access (printers, file server, DHCP) but cannot reach the internet. To block someone, use the Block button next to a device in Live, Abuse or Security, or in the device panel. Blocking works by address: a phone that changes its address needs a fixed (static) lease.</div></div>
+  </section>
+
+  <section id="v-privacy" hidden>
+    <div class="cards">
+      <div class="card"><h3>VPN traffic</h3><div class="big" id="vp-bytes">-</div><div class="sub" id="vp-share"></div></div>
+      <div class="card"><h3>Devices using a VPN</h3><div class="big" id="vp-dev">-</div><div class="sub" id="vp-live"></div></div>
+      <div class="card"><h3>Private (random) MACs</h3><div class="big" id="mp-laa">-</div><div class="sub" id="mp-laa2"></div></div>
+      <div class="card"><h3>Devices that changed MAC</h3><div class="big" id="mp-chg">-</div><div class="sub" id="mp-since"></div></div>
+    </div>
+    <div class="panel">
+      <h2>VPN and tunnel usage <span class="ipx" id="vp-count"></span></h2>
+      <div class="tools"><select id="vp-days"><option value="1">Today</option><option value="7" selected>Last 7 days</option><option value="30">Last 30 days</option></select></div>
+      <table id="vptbl"><thead><tr><th class="l">Device</th><th class="l">Network</th><th class="l">Type</th><th>VPN traffic</th><th>Share of its internet</th><th class="l">Remote address(es)</th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">Found by protocol and well-known port (OpenVPN, WireGuard, IPsec, PPTP, L2TP, Tor, Shadowsocks...). &quot;Possible tunnel&quot; means nearly all of a busy device&#39;s traffic goes to one unknown address, which is how many VPN apps and proxies on port 443 look. VPNs hide what is inside, so only the volume is known.</div>
+    </div>
+    <div class="panel">
+      <h2>Devices that change their MAC address <span class="ipx" id="mc-count"></span></h2>
+      <table id="mctbl"><thead><tr><th class="l">Device name</th><th>MACs seen</th><th class="l">Addresses (oldest first)</th><th class="l">Last seen</th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">Same device name with several MAC addresses, one after the other and never together: a phone with &quot;Private Wi-Fi address&quot; (iPhone / Android) that rotates its address. Tracking started when this version was installed, so rotation shows up over days and weeks.</div>
+    </div>
+    <div class="panel">
+      <h2>Private (randomized) MAC addresses on the network <span class="ipx" id="ml-count"></span></h2>
+      <table id="mltbl"><thead><tr><th class="l">MAC</th><th class="l">Address</th><th class="l">Name</th><th class="l">First seen</th><th class="l">Last seen</th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">A MAC whose second digit is 2, 6, A or E is a made-up address, not the one printed on the hardware. The device is real but cannot be recognised by its MAC: block it by IP or give it a fixed lease and name instead.</div>
+    </div>
+  </section>
+  <section id="v-pres" hidden>
+    <div class="cards">
+      <div class="card"><h3>Online now</h3><div class="big" id="p-on" style="color:var(--ok)">-</div><div class="sub" id="p-on2"></div></div>
+      <div class="card"><h3>Offline (watched)</h3><div class="big upc" id="p-off">-</div><div class="sub" id="p-off2"></div></div>
+      <div class="card"><h3>Went offline in last 24 h</h3><div class="big" id="p-24">-</div><div class="sub">watched devices that are still off</div></div>
+      <div class="card"><h3>Not verified yet</h3><div class="big" id="p-unk">-</div><div class="sub">the monitor is checking them</div></div>
+    </div>
+    <div class="panel">
+      <div class="tools">
+        <select id="pgroup"><option value="">All groups</option></select>
+        <select id="pstate"><option value="">Any state</option><option value="offline" selected>Offline</option><option value="online">Online</option><option value="unknown">Not verified</option></select>
+        <label class="ipx"><input type="checkbox" id="pwatch" checked> only watched devices</label>
+        <input type="search" id="pq" placeholder="Search name, IP, MAC...">
+        <span class="ipx" id="pcount"></span>
+      </div>
+      <table id="ptbl"><thead><tr><th class="l">Device</th><th class="l">Group</th><th class="l">Network</th><th class="l">State</th><th class="l">Last seen</th><th class="l">Offline for</th><th>Outages 7 d</th><th>Uptime 7 d</th><th>Watch</th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">A device is online when it moves traffic or answers the router (ARP / ping). It is marked offline when the router cannot reach it, or after it stays silent for 6 minutes and two pings fail (guests: 30 min of silence). "Never seen" = in the router's DHCP list but not seen since the monitor started. Watched by default: staff PCs, access points, IoT controllers, servers, CCTV, door locks and VoIP phones. Click a row for its outage history.</div>
+    </div>
+  </section>
+
+  <section id="v-setup" hidden></section>
+
+  <section id="v-config" hidden>
+    <div class="panel">
+      <h2>Configuration for router <span id="cf-name" style="color:var(--accent)"></span> <button class="mini" id="cf-conn">Connection / credentials</button> <span class="ipx" id="cf-host"></span></h2>
+      <div class="ipx">Everything on this page belongs to the router selected at the top; each router has its own configuration and history.</div>
+    </div>
+    <div class="panel">
+      <h2>General</h2>
+      <div class="form">
+        <label>Staff networks (router interface names, comma separated)<input id="cg-staff"></label>
+        <label>Guest networks<input id="cg-guest"></label>
+        <label>Admin PCs (never blocked / limited, comma separated)<input id="cg-admin"></label>
+        <label>Servers that scan on purpose (ignored by security alerts)<input id="cg-ignore"></label>
+      </div>
+      <div class="tools" style="margin-top:10px"><button class="btn pri" id="cg-save">Save general settings</button><button class="btn" id="cg-abuse">Working hours &amp; abuse limits...</button><span class="ipx" id="cg-msg"></span></div>
+    </div>
+    <div class="panel" id="qos-panel">
+      <h2>Bandwidth control (MikroTik queues) <span id="q-chips"></span></h2>
+      <div class="ipx">Limits apply to <b>internet traffic only</b> (queues are tied to the internet interface <span id="q-wan"></span>); LAN traffic is never limited. Each group gets a <b>default rate per device</b>, so every new device is covered automatically. Individual devices or users can be given a different profile (above the group rule) manually or by auto-throttle. Nothing is enforced until you turn the master switch on and press Apply.</div>
+      <div id="q-warn" class="warnbar" hidden style="margin-top:10px"></div>
+      <div class="tools" style="margin:10px 0"><label><input type="checkbox" id="q-master"> <b>Enforce limits</b> (master switch)</label><span class="ipx">WAN interface override: </span><input id="q-wanin" placeholder="auto" style="width:220px"></div>
+      <h3 style="margin:10px 0 4px;font-size:13px">1. Profiles (rates: 4M, 512k, 0 = unlimited)</h3>
+      <table id="qp-tbl"><thead><tr><th class="l">Id</th><th class="l">Name</th><th>Download</th><th>Upload</th><th></th></tr></thead><tbody></tbody></table>
+      <button class="mini" id="qp-add" style="margin-top:6px">+ add profile</button>
+      <h3 style="margin:14px 0 4px;font-size:13px">2. Default rule per group (applies to every device in these networks)</h3>
+      <table id="qg-tbl"><thead><tr><th class="l">Group</th><th class="l">Networks (CIDR, comma separated)</th><th class="l">Profile per device</th><th>On</th></tr></thead><tbody></tbody></table>
+      <h3 style="margin:14px 0 4px;font-size:13px">3. Users (a person with one or more devices) - overrides the group rule</h3>
+      <table id="qu-tbl"><thead><tr><th class="l">User</th><th class="l">Device addresses (comma separated)</th><th class="l">Profile</th><th class="l">Note</th><th></th></tr></thead><tbody></tbody></table>
+      <button class="mini" id="qu-add" style="margin-top:6px">+ add user</button>
+      <h3 style="margin:14px 0 4px;font-size:13px">4. Auto-throttle (sustained heavy download)</h3>
+      <div class="tools"><label><input type="checkbox" id="qa-on"> enabled</label> when a device averages &ge; <input id="qa-mbps" style="width:60px"> Mbps down for <input id="qa-min" style="width:50px"> min (1-15), apply profile <select id="qa-prof"></select> for <input id="qa-for" style="width:60px"> min, for groups: <span id="qa-groups"></span></div>
+      <h3 style="margin:14px 0 4px;font-size:13px">5. Usage quota (too much download / upload &rarr; temporary speed limit)</h3>
+      <div class="tools"><label><input type="checkbox" id="qq-on"> enabled</label> period: <select id="qq-days"><option value="1">per day (resets at midnight)</option><option value="2">last 2 days</option><option value="3">last 3 days</option><option value="7">last 7 days</option><option value="14">last 14 days</option><option value="30">last 30 days</option></select>
+        download &ge; <input id="qq-down" style="width:60px"> GB or upload &ge; <input id="qq-up" style="width:60px"> GB or total &ge; <input id="qq-tot" style="width:60px"> GB (0 = not checked)</div>
+      <div class="tools" style="margin-top:6px">then apply profile <select id="qq-prof"></select> for <input id="qq-for" style="width:70px"> min (1440 = 24 h), for groups: <span id="qq-groups"></span></div>
+      <div class="tools" style="margin-top:6px">never limit these devices (addresses, comma separated): <input id="qq-ex" style="min-width:320px"></div>
+      <div class="ipx">Counts INTERNET traffic only. When a device passes a limit it is slowed for the chosen time and then released by itself. After a limit, usage is counted again from the next day, so a device is not limited twice for the same traffic. Devices that already have an individual limit, belong to a user entry, are admin PCs or on the scan-ignore list are skipped. Needs the master switch on and the queues applied to the router.</div>
+      <table id="qqu-tbl" style="margin-top:8px"><thead><tr><th class="l">Closest to the quota now</th><th class="l">Group</th><th>Download</th><th>Upload</th><th>Of quota</th><th class="l">Status</th></tr></thead><tbody></tbody></table>
+      <div class="tools" style="margin-top:14px"><button class="btn pri" id="q-save">Save configuration</button><button class="btn" id="q-preview">Preview changes on the router...</button><button class="btn" id="q-off">Disable all limits now</button><button class="btn danger" id="q-remove">Remove all from router</button><span class="ipx" id="q-msg"></span></div>
+      <h3 style="margin:14px 0 4px;font-size:13px">Device overrides now</h3>
+      <table id="qd-tbl"><thead><tr><th class="l">Device</th><th class="l">Limit</th><th class="l">Source</th><th class="l">Ends</th><th>Live rate</th><th></th></tr></thead><tbody></tbody></table>
+      <h3 style="margin:14px 0 4px;font-size:13px">Queues on the router</h3>
+      <table id="qq-tbl"><thead><tr><th class="l">Name</th><th class="l">Target</th><th class="l">Max (up/down)</th><th class="l">State</th><th>Live rate (up/down)</th></tr></thead><tbody></tbody></table>
+      <h3 style="margin:14px 0 4px;font-size:13px">Recent actions</h3><div id="q-recent" class="ipx"></div>
+    </div>
+  </section>
+
+  <section id="v-audit" hidden>
+    <div class="cards">
+      <div class="card"><h3>Blocked right now</h3><div class="big upc" id="au-now">-</div><div class="sub">see the Blocked tab</div></div>
+      <div class="card"><h3>Blocks in period</h3><div class="big" id="au-blk">-</div></div>
+      <div class="card"><h3>Speed limits in period</h3><div class="big" id="au-lim">-</div></div>
+      <div class="card"><h3>Actions in period</h3><div class="big" id="au-all">-</div></div>
+    </div>
+    <div class="panel">
+      <div class="tools"><b>Audit history</b>
+        <select id="au-period"><option value="30">last 30 days</option><option value="90" selected>last 90 days</option><option value="365">last year</option><option value="all">all time</option></select>
+        <select id="au-kind"><option value="">All actions</option><option value="block">Blocks / unblocks</option><option value="qos">Speed limits / bandwidth control</option></select>
+        <input type="search" id="au-q" placeholder="Search device, address, note...">
+        <button class="mini" id="au-csv">Export CSV</button>
+        <span class="ipx" id="au-count"></span>
+      </div>
+      <table id="autbl"><thead><tr><th class="l">When</th><th class="l">Action</th><th class="l">Device / user</th><th class="l">Group</th><th class="l">Details</th><th class="l">By</th><th>Lasted</th></tr></thead><tbody></tbody></table>
+      <div class="ipx" style="margin-top:6px">Every block, unblock and speed limit made from the dashboard is recorded with time, device, duration and note, plus changes made directly on the router (Winbox or script) and blocks that ended by timeout. The log is kept forever on this PC.</div>
+    </div>
+  </section>
+
+  <section id="v-reports" hidden>
+    <div class="panel">
+      <h2>Printable reports (A4)</h2>
+      <div class="ipx">Top staff and guest users, top destinations and types, abuse findings, security events, blocked and speed-limited devices, offline devices and the most important results. English, Persian, Arabic, Russian or Chinese (right-to-left languages are laid out correctly), with your organization name and logo and the Kish IT copyright. The report opens as a print-ready page: use <b>Print / Save as PDF</b> there.</div>
+      <div class="tools" style="margin:14px 0 6px"><b>Language</b><div class="seg" id="rp-lang"><button data-v="en">English</button><button data-v="fa">&#1601;&#1575;&#1585;&#1587;&#1740;</button><button data-v="ar">العربية</button><button data-v="ru">Русский</button><button data-v="zh">中文</button><button data-v="both">English + &#1601;&#1575;&#1585;&#1587;&#1740;</button></div></div>
+      <div class="tools"><b>Period</b>
+        <button class="btn" data-rp="today">Today</button><button class="btn" data-rp="yesterday">Yesterday</button><button class="btn" data-rp="week">This week</button><button class="btn pri" data-rp="7d">Last 7 days</button><button class="btn" data-rp="month">This month</button><button class="btn" data-rp="lmonth">Last month</button><button class="btn" data-rp="30d">Last 30 days</button></div>
+      <div class="tools"><b>Custom</b><input type="date" id="rp-from"> <span class="ipx">to</span> <input type="date" id="rp-to"><button class="btn" id="rp-go">Open report</button></div>
+      <div class="ipx" style="margin-top:8px">Per-minute detail (used by the abuse section) is kept 31 days; daily totals are kept forever. Destination details are kept 120 days.</div>
+    </div>
+  </section>
+
+  <section id="v-wifi" hidden>
+    <div class="panel">
+      <h2>Guest Wi-Fi hotspot <span id="w-chips"></span></h2>
+      <div class="ipx">Captive portal for visitors (hotel, restaurant, apartment building, office reception, school...): devices see your branded page and the walled-garden sites; the internet opens after login with an access code that the reception / staff issues, with a package (speed, number of devices) and an end time. Preparing creates only tagged objects and leaves the hotspot <b>disabled</b>: nobody is affected until you press <b>Enable</b>. Your staff network is not touched.</div>
+      <div id="w-err" class="warnbar" hidden style="margin-top:10px"></div>
+      <h3 style="margin:12px 0 4px;font-size:13px">Readiness</h3><div id="w-checks"></div>
+      <div class="tools" style="margin-top:12px"><button class="btn pri" id="w-prep">1. Prepare the router...</button><button class="btn" id="w-pages">2. Upload portal pages</button><button class="btn danger" id="w-enable">3. Enable guest hotspot...</button><button class="btn" id="w-disable">Disable</button><button class="btn" id="w-remove">Remove everything</button><span class="ipx" id="w-msg"></span></div>
+    </div>
+    <div class="panel">
+      <h2>Settings</h2>
+      <div class="form">
+        <label>Guest network interface<select id="wf-iface"></select></label>
+        <label>Hotspot server name<input id="wf-server"></label>
+        <label>Login page<select id="wf-mode"><option value="local">Branded page on the router (activation code)</option><option value="portal">Redirect to my own guest web page</option></select></label>
+        <label>Organization name (English)<input id="wf-en"></label>
+        <label>Organization name (local language, optional)<input id="wf-fa" dir="auto"></label>
+        <label>Language of the login pages<select id="wf-lang"><option value="en">English</option><option value="fa">فارسی + English</option><option value="ar">العربية + English</option><option value="ru">Русский + English</option><option value="zh">中文 + English</option></select></label>
+        <label>My own guest web page (optional, also allowed before login)<input id="wf-portal"></label>
+        <label>Logo address (fetched by the router)<input id="wf-logo"></label>
+        <label>Wi-Fi names printed on guest cards (comma separated)<input id="wf-ssid"></label>
+        <label>Remember login (days)<input id="wf-cookie" inputmode="numeric"></label>
+      </div>
+      <h3 style="margin:12px 0 4px;font-size:13px">Packages (speed per visitor login; staff chooses one when issuing a code)</h3>
+      <table id="wp-tbl"><thead><tr><th class="l">Id</th><th class="l">Name</th><th>Download</th><th>Upload</th><th>Devices</th><th>Default</th><th></th></tr></thead><tbody></tbody></table>
+      <button class="mini" id="wp-add" style="margin-top:6px">+ add package</button>
+      <h3 style="margin:12px 0 4px;font-size:13px">Walled garden (always reachable without login)</h3>
+      <table id="ww-tbl"><thead><tr><th class="l">Type</th><th class="l">Address / host (* allowed in hosts)</th><th class="l">Port</th><th class="l">Note</th><th></th></tr></thead><tbody></tbody></table>
+      <button class="mini" id="ww-add" style="margin-top:6px">+ add entry</button>
+      <h3 style="margin:12px 0 4px;font-size:13px">Never see the portal (fixed devices on the guest network: access points, controllers, printers)</h3>
+      <table id="wb-tbl"><thead><tr><th class="l">MAC (optional)</th><th class="l">Address (optional)</th><th class="l">Note</th><th></th></tr></thead><tbody></tbody></table>
+      <button class="mini" id="wb-add" style="margin-top:6px">+ add device</button>
+      <div class="tools" style="margin-top:12px"><button class="btn pri" id="w-save">Save settings</button><span class="ipx">Settings are only stored here until you press Prepare.</span></div>
+    </div>
+    <div class="cols2">
+      <div class="panel"><h2>Guest login page <select id="wv-file"><option>login.html</option><option>alogin.html</option><option>status.html</option><option>logout.html</option><option>error.html</option></select></h2>
+        <iframe id="wv-frame" title="preview" style="width:100%;max-width:380px;height:560px;border:1px solid var(--line);border-radius:14px;background:#fff;display:block;margin:0 auto"></iframe>
+        <div class="ipx" style="margin-top:6px;text-align:center">What a phone sees (sample values). Branded with your organization name, in the chosen language and English.</div></div>
+      <div class="panel"><h2>Wi-Fi access codes for visitors</h2>
+        <div class="form" style="grid-template-columns:1fr 1fr">
+          <label>Reference (room, table, unit...)<input id="wa-room" placeholder="e.g. 412"></label>
+          <label>Guest name<input id="wa-guest"></label>
+          <label>Package<select id="wa-pkg"></select></label>
+          <label>Valid until<input id="wa-until" type="datetime-local"></label>
+        </div>
+        <div class="tools" style="margin-top:8px"><button class="btn pri" id="wa-go">Create code</button><span class="ipx" id="wa-msg"></span></div>
+        <table id="wa-tbl" style="margin-top:8px"><thead><tr><th class="l">Code</th><th class="l">Room / guest</th><th class="l">Package</th><th class="l">Valid until</th><th></th></tr></thead><tbody></tbody></table></div>
+    </div>
+    <div class="panel"><h2>Connected guests right now <span class="ipx" id="w-act-count"></span></h2>
+      <table id="wt-tbl"><thead><tr><th class="l">Login</th><th class="l">Device</th><th class="l">Address</th><th>Online</th><th>Time left</th><th>Down</th><th>Up</th><th></th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section id="v-usage" hidden>
+    <div class="panel">
+      <div class="tools"><b>Period</b>
+        <div class="seg" id="uperiod"><button data-v="today" class="on">Today</button><button data-v="24h">24 h</button><button data-v="7d">7 days</button><button data-v="30d">30 days</button><button data-v="90d">90 days</button><button data-v="1y">1 year</button></div>
+        <input type="search" id="uq" placeholder="Search...">
+      </div>
+      <h2>Total traffic <span class="legend"><span><i style="background:var(--down)"></i>Download</span><span><i style="background:var(--up)"></i>Upload</span></span></h2>
+      <div class="chartwrap"><canvas id="ch-utotal" height="200"></canvas><div class="tip"></div></div>
+    </div>
+    <div class="panel">
+      <h2>Who used the most <span class="ipx" id="utotal"></span></h2>
+      <table id="utbl"><thead><tr><th class="l">#</th><th class="l">Device</th><th class="l">Network</th><th>Download</th><th>Upload</th><th>Total</th><th class="l" style="min-width:140px">Share</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+</main>
+
+<footer id="foot">
+  <span class="status"><span class="dot" id="dot"></span><span id="stat">connecting...</span></span>
+  <span class="fmid" id="fmid"></span>
+  <span class="copy">&copy; <span id="yr"></span> <a href="https://kish-it.com" target="_blank" rel="noopener">Kish IT</a> &middot; <a href="https://kish-it.com" target="_blank" rel="noopener">kish-it.com</a></span>
+</footer>
+
+<div id="hpmodal" class="modal" hidden>
+  <div class="mbox">
+    <div class="dh"><div class="t"><b>Prepare the guest hotspot: changes on the router</b><div class="ipx">The hotspot stays disabled. Only objects tagged [mtc-hotspot] / named mtc-* are created or changed; other hotspot objects on the router stay.</div></div><button class="x" id="hp-close">&times;</button></div>
+    <div id="hp-warn" class="warnbar" hidden></div>
+    <pre id="hp-ops" style="max-height:46vh;overflow:auto;background:var(--hover);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;margin:0"></pre>
+    <div class="ipx" style="margin:10px 0">A router configuration export (before-hotspot-...) is saved first. Undo everything with "Remove everything" on the Guest Wi-Fi tab.</div>
+    <div class="tools"><button class="btn pri" id="hp-apply">Prepare the router</button><button class="btn" id="hp-cancel">Close</button><span class="ipx" id="hp-msg"></span></div>
+  </div>
+</div>
+<div id="pmodal" class="modal" hidden>
+  <div class="mbox">
+    <div class="dh"><div class="t"><b>Changes that will be made on the router</b><div class="ipx" id="pm-sub"></div></div><button class="x" id="pm-close">&times;</button></div>
+    <div id="pm-warn" class="warnbar" hidden></div>
+    <pre id="pm-ops" style="max-height:46vh;overflow:auto;background:var(--hover);border-radius:8px;padding:10px;font-size:12px;white-space:pre-wrap;margin:0"></pre>
+    <div class="ipx" style="margin:10px 0">A router configuration export (before-qos-...) is saved first. Only queues named mtc-* are touched. You can undo everything with "Remove all from router" or routeros/mtc-remove.rsc.</div>
+    <div class="tools"><button class="btn pri" id="pm-apply">Apply to router</button><button class="btn" id="pm-cancel">Close</button><span class="ipx" id="pm-msg"></span></div>
+  </div>
+</div>
+<div id="lmodal" class="modal" hidden>
+  <div class="mbox" style="width:min(480px,100%)">
+    <div class="dh"><div class="t"><b id="l-title">Limit speed</b><div class="ipx" id="l-sub"></div></div><button class="x" id="l-close">&times;</button></div>
+    <div class="form" style="grid-template-columns:1fr 1fr">
+      <label>Profile<select id="l-prof"></select></label>
+      <label>For<select id="l-dur"><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="240">4 hours</option><option value="eod">until the end of today</option><option value="1440">24 hours</option><option value="0">until I remove it</option></select></label>
+      <label><span><input type="checkbox" id="l-cust"> custom rate instead</span></label><span></span>
+      <label>Download (e.g. 2M)<input id="l-down" disabled></label>
+      <label>Upload (e.g. 512k)<input id="l-up" disabled></label>
+    </div>
+    <div class="ipx" style="margin:10px 0">Applies to this device's internet traffic only, above the group rule. It ends by itself when the time is over.</div>
+    <div class="tools"><button class="btn pri" id="l-go">Apply limit</button><button class="btn" id="l-cancel">Cancel</button><span class="ipx" id="l-msg"></span></div>
+  </div>
+</div>
+<div id="bmodal" class="modal" hidden>
+  <div class="mbox" style="width:min(460px,100%)">
+    <div class="dh"><div class="t"><b id="b-title">Block internet</b><div class="ipx" id="b-sub"></div></div><button class="x" id="b-close" title="Close">&times;</button></div>
+    <label class="ipx">Block for<br><select id="b-dur" style="margin-top:4px;width:100%"><option value="30">30 minutes</option><option value="60" selected>1 hour</option><option value="240">4 hours</option><option value="eod">until the end of today</option><option value="1440">24 hours</option><option value="10080">7 days</option><option value="43200">30 days</option><option value="0">until I unblock</option></select></label>
+    <div class="ipx" id="b-help" style="margin:10px 0">The device keeps its local network access, but every connection to the internet is dropped and open ones are cut. It unblocks itself when the time ends.</div>
+    <div class="tools"><button class="btn danger" id="b-go">Block internet</button><button class="btn" id="b-cancel">Cancel</button><span class="ipx" id="b-msg"></span></div>
+  </div>
+</div>
+<div id="wmodal" class="modal" hidden>
+  <div class="mbox">
+    <div class="dh"><div class="t"><b id="w-ip">Whois</b><div class="ipx" id="w-sub"></div></div><button class="x" id="w-close">&times;</button></div>
+    <div id="w-body"></div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button class="mini" id="w-raw">Show raw whois</button><button class="mini" id="w-refresh">Refresh from registry</button><button class="mini" id="w-copy">Copy</button><span class="ipx" id="w-msg"></span></div>
+    <pre id="w-pre" hidden style="max-height:45vh;overflow:auto;white-space:pre-wrap;font-size:12px;background:var(--hover);border:1px solid var(--line);border-radius:8px;padding:8px;margin-top:8px"></pre>
+  </div>
+</div>
+<div id="amodal" class="modal" hidden>
+  <div class="mbox">
+    <div class="dh"><div class="t"><b>Abuse limits &amp; working hours</b><div class="ipx">Used by the Abuse tab. Applies to this router.</div></div><button class="x" id="am-close">&times;</button></div>
+    <div class="form">
+      <div id="af-hours" style="grid-column:1/-1"></div>
+      <label>Busy minute = at least (MB / min)<input id="af-busyMB" inputmode="decimal"></label>
+      <label>Staff: busy minutes per day limit<input id="af-busyMinWarn" inputmode="numeric"></label>
+      <label>Staff: GB per working day limit<input id="af-staffDayGB" inputmode="decimal"></label>
+      <label>Guests: GB per day limit<input id="af-guestDayGB" inputmode="decimal"></label>
+      <label>Upload limit (GB per day)<input id="af-uploadGB" inputmode="decimal"></label>
+      <label>Flag at N times the median<input id="af-peerMult" inputmode="decimal"></label>
+      <label>...but only above (MB)<input id="af-minPeerMB" inputmode="numeric"></label>
+      <label>Guests: concurrent connections limit<input id="af-connWarn" inputmode="numeric"></label>
+    </div>
+    <div class="tools" style="margin-top:10px"><button class="btn pri" id="af-save">Save</button><span class="ipx" id="af-msg"></span></div>
+  </div>
+</div>
+<div id="rmodal" class="modal" hidden>
+  <div class="mbox">
+    <div class="dh"><div class="t"><b>Routers</b><div class="ipx">Each router keeps its own history. Passwords you save here are encrypted for this Windows user on this PC.</div></div><button class="x" id="rm-close" title="Close">&times;</button></div>
+    <table id="rtbl"><thead><tr><th class="l">Name</th><th class="l">Address</th><th class="l">User</th><th class="l">Status</th><th></th></tr></thead><tbody></tbody></table>
+    <h2 style="margin-top:14px" id="rf-title">Add a router</h2>
+    <div class="form">
+      <label>Name<input id="rf-name" placeholder="e.g. Branch office"></label>
+      <label>Address<input id="rf-host" placeholder="192.168.1.1"></label>
+      <label>API port<input id="rf-port" value="8728" inputmode="numeric"></label>
+      <label>User<input id="rf-user" placeholder="API user" autocomplete="off"></label>
+      <label>Password<input id="rf-pw" type="password" autocomplete="new-password"></label>
+      <label>Local DNS server (optional)<input id="rf-dns" placeholder="for PC names"></label>
+    </div>
+    <div class="tools" style="margin-top:10px"><button class="btn" id="rf-test">Test connection</button><button class="btn pri" id="rf-save">Save router</button><button class="btn" id="rf-cancel" hidden>Cancel edit</button><span id="rf-msg" class="ipx"></span></div>
+    <div class="ipx">Monitoring needs a RouterOS API user with read access. The monitor only reads (connection table, ARP, DHCP leases, addresses).</div>
+  </div>
+</div>
+
+<aside id="detail">
+  <div class="dh">
+    <div class="t"><b id="d-name"></b> <button class="mini" id="d-rename">rename</button> <button class="mini" id="d-block" data-act="block">Block internet</button> <button class="mini" id="d-limit" data-act="limit">Limit speed</button> <label class="ipx"><input type="checkbox" id="d-staff"> counts as staff</label><div class="ipx" id="d-sub"></div></div>
+    <button class="x" id="d-close" title="Close">&times;</button>
+  </div>
+  <div class="grid2">
+    <div class="card"><h3>Download now</h3><div class="big dn" id="d-dn">-</div></div>
+    <div class="card"><h3>Upload now</h3><div class="big upc" id="d-up">-</div></div>
+    <div class="card"><h3>Today</h3><div class="big" id="d-today">-</div><div class="sub" id="d-today2"></div></div>
+  </div>
+  <div class="panel">
+    <h2>Live - last 20 minutes <span class="legend"><span><i style="background:var(--down)"></i>Download</span><span><i style="background:var(--up)"></i>Upload</span></span></h2>
+    <div class="chartwrap"><canvas id="ch-dlive" height="170"></canvas><div class="tip"></div></div>
+  </div>
+  <div class="panel">
+    <h2>History <div class="seg" id="drange"><button data-v="1h">1 h</button><button data-v="6h">6 h</button><button data-v="24h" class="on">24 h</button><button data-v="7d">7 d</button><button data-v="30d">30 d</button><button data-v="90d">90 d</button><button data-v="1y">1 y</button></div></h2>
+    <div class="chartwrap"><canvas id="ch-dhist" height="190"></canvas><div class="tip"></div></div>
+    <div class="ipx" id="d-histsum" style="margin-top:6px"></div>
+  </div>
+  <div class="panel">
+    <h2>Who it talks to <div class="seg" id="ddper"><button data-v="today" class="on">Today</button><button data-v="7d">7 d</button><button data-v="30d">30 d</button></div></h2>
+    <div id="dd-types"></div>
+    <table id="ddtbl" style="margin-top:8px"><thead><tr><th class="l">Destination</th><th class="l">Type</th><th>Download</th><th>Upload</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+  <div class="panel">
+    <h2>What it is doing right now</h2>
+    <table id="ftbl"><thead><tr><th class="l">Remote</th><th class="l">Port</th><th>Download</th><th>Upload</th><th></th></tr></thead><tbody></tbody></table>
+  </div>
+</aside>
+
+<script>
+'use strict';
+const $ = (s, r = document) => r.querySelector(s);
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const S = { scope: 'inet', view: 'live', sort: 'down', asc: false, sel: null, drange: 'all', uperiod: 'today', live: null, q: '', vf: '', sf: '', onlyact: true, ema: {}, act: {}, order: null, lastSort: 0, force: true };
+
+// ---------- UI helpers: toasts, dialogs, smooth table updates
+function toast(msg, kind, ms) {
+  const el = document.createElement('div'); el.className = 'toast ' + (kind || ''); el.textContent = msg; $('#toasts').append(el);
+  const t = setTimeout(() => { el.classList.add('out'); setTimeout(() => el.remove(), 300); }, ms || (kind === 'bad' ? 7000 : 4000));
+  el.addEventListener('click', () => { clearTimeout(t); el.remove(); });
+}
+function dialog(o) {
+  return new Promise((resolve) => {
+    const m = $('#dlg'), inp = $('#dlg-i'), ok = $('#dlg-ok'), no = $('#dlg-no');
+    $('#dlg-t').textContent = o.title || ''; $('#dlg-m').textContent = o.message || '';
+    inp.hidden = !o.input; inp.value = o.value || ''; inp.placeholder = o.placeholder || '';
+    ok.textContent = o.ok || 'OK'; no.textContent = o.cancel || 'Cancel'; ok.className = 'btn ' + (o.danger ? 'danger' : 'pri');
+    const done = (v) => { m.hidden = true; ok.onclick = no.onclick = m.onkeydown = m.onclick = null; resolve(v); };
+    ok.onclick = () => done(o.input ? inp.value : true); no.onclick = () => done(o.input ? null : false);
+    m.onkeydown = (e) => { if (e.key === 'Escape') { e.stopPropagation(); no.onclick(); } else if (e.key === 'Enter') { e.preventDefault(); ok.onclick(); } };
+    m.onclick = (e) => { if (e.target === m) no.onclick(); };
+    m.hidden = false; setTimeout(() => (o.input ? inp : ok).focus(), 30);
+  });
+}
+const uiConfirm = (title, message, o) => dialog(Object.assign({ title, message }, o || {}));
+const uiPrompt = (title, message, value, o) => dialog(Object.assign({ title, message, input: true, value }, o || {}));
+// Keyed patching of table bodies: unchanged rows stay untouched (no flicker, scroll and open detail rows are kept),
+// changed rows are replaced in place, new rows fade in, and rows are only moved when their order really changed.
+function patchTbody(tb, html) {
+  const t = document.createElement('template'); t.innerHTML = '<table><tbody>' + html + '</tbody></table>';
+  const want = [...t.content.querySelector('tbody').children];
+  const keyOf = (tr, i) => (tr.dataset.k !== undefined ? tr.dataset.k : (tr.dataset.ip || tr.dataset.pip || tr.dataset.key || tr.dataset.gid || '#' + i));
+  const have = new Map(); let last = null;
+  for (const tr of [...tb.children]) {
+    if (tr.classList.contains('subrow')) { if (last && !last.__sub) last.__sub = tr; continue; }
+    last = tr; if (tr.__k !== undefined) have.set(tr.__k, tr);
+  }
+  const seen = new Set(); let cursor = tb.firstElementChild;
+  want.forEach((nr, i) => {
+    let k = keyOf(nr, i); while (seen.has(k)) k += '_'; seen.add(k);
+    const h = nr.outerHTML; let tr = have.get(k);
+    if (!tr) { tr = nr; tr.__k = k; tr.__h = h; if (tb.__init) tr.classList.add('newrow'); }
+    else if (tr.__h !== h) { nr.__k = k; nr.__h = h; nr.__sub = tr.__sub; if (cursor === tr) cursor = nr; tr.replaceWith(nr); tr = nr; }
+    if (tr === cursor) cursor = (tr.__sub && tr.__sub.parentNode === tb ? tr.__sub : tr).nextElementSibling;
+    else { tb.insertBefore(tr, cursor); if (tr.__sub && tr.__sub.parentNode === tb) tr.after(tr.__sub); }
+  });
+  for (const [k, tr] of have) if (!seen.has(k)) { if (tr.__sub) tr.__sub.remove(); tr.remove(); }
+  for (const tr of [...tb.children]) if (!tr.classList.contains('subrow') && tr.__k === undefined) tr.remove();
+  tb.__init = true;
+}
+{ const d = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
+  Object.defineProperty(HTMLTableSectionElement.prototype, 'innerHTML', { configurable: true, get() { return d.get.call(this); }, set(html) { patchTbody(this, html); } }); }
+S.drange = '24h';
+
+// ---------- formatting
+function pick(v, sc) { // v=[iu,id,lu,ld] -> {up,down}
+  if (sc === 'inet') return { up: v[0], down: v[1] };
+  if (sc === 'lan') return { up: v[2], down: v[3] };
+  return { up: v[0] + v[2], down: v[1] + v[3] };
+}
+function fmtRate(Bps) { const b = Bps * 8; if (b < 1e3) return b.toFixed(0) + ' bps'; if (b < 1e6) return (b / 1e3).toFixed(b < 1e4 ? 1 : 0) + ' Kbps'; if (b < 1e9) return (b / 1e6).toFixed(b < 1e7 ? 2 : 1) + ' Mbps'; return (b / 1e9).toFixed(2) + ' Gbps'; }
+function fmtBytes(n) { if (n < 1024) return n.toFixed(0) + ' B'; const u = ['KB', 'MB', 'GB', 'TB']; let i = -1; do { n /= 1024; i++; } while (n >= 1024 && i < 3); return n.toFixed(n < 10 ? 2 : n < 100 ? 1 : 0) + ' ' + u[i]; }
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pad = (n) => String(n).padStart(2, '0');
+const hm = (t) => { const d = new Date(t * 1000); return pad(d.getHours()) + ':' + pad(d.getMinutes()); };
+const hms = (t) => hm(t) + ':' + pad(new Date(t * 1000).getSeconds());
+const dmy = (t) => { const d = new Date(t * 1000); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+const PORTS = { 443: 'HTTPS', 80: 'HTTP', 53: 'DNS', 853: 'DNS-TLS', 123: 'NTP', 5228: 'Google push', 5222: 'WhatsApp/XMPP', 993: 'IMAPS', 587: 'SMTP', 25: 'SMTP', 22: 'SSH', 3389: 'RDP', 5060: 'SIP', 1883: 'MQTT', 8080: 'HTTP-alt', 8443: 'HTTPS-alt', 445: 'SMB', 3478: 'STUN', 4500: 'IPsec' };
+
+// ---------- chart
+function css(n) { return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+function niceMax(v) { if (v <= 0) return 1; const e = Math.pow(10, Math.floor(Math.log10(v))); const f = v / e; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * e; }
+class Chart {
+  // opts: kind 'area'|'bars', yfmt(v), xfmt(t), tipfmt(point)
+  constructor(canvas, opts) {
+    canvas.style.height = canvas.getAttribute('height') + 'px';
+    this.c = canvas; this.o = opts; this.pts = []; this.hover = -1; this.tip = canvas.parentElement.querySelector('.tip');
+    canvas.addEventListener('mousemove', (e) => { const r = canvas.getBoundingClientRect(); this.setHover(e.clientX - r.left, e.clientY - r.top); });
+    canvas.addEventListener('mouseleave', () => { this.hover = -1; this.tip.style.display = 'none'; this.draw(); });
+    new ResizeObserver(() => this.draw()).observe(canvas);
+  }
+  set(pts) { this.pts = pts; this.draw(); }
+  geom() { const W = this.c.clientWidth, H = this.c.clientHeight; return { W, H, l: 58, r: 10, t: 8, b: 22 }; }
+  setHover(x) {
+    const g = this.geom(); if (!this.pts.length) return;
+    const n = this.pts.length, pw = (g.W - g.l - g.r);
+    let i = this.o.kind === 'bars' ? Math.floor((x - g.l) / (pw / n)) : Math.round((x - g.l) / pw * (n - 1));
+    i = Math.max(0, Math.min(n - 1, i)); this.hover = i; this.draw();
+    const p = this.pts[i];
+    this.tip.innerHTML = this.o.tipfmt(p); this.tip.style.display = 'block';
+    const xx = this.xAt(i, g); const tw = this.tip.offsetWidth;
+    this.tip.style.left = Math.max(0, Math.min(g.W - tw, xx - tw / 2)) + 'px'; this.tip.style.top = '4px';
+  }
+  xAt(i, g) { const n = this.pts.length, pw = g.W - g.l - g.r; return this.o.kind === 'bars' ? g.l + (i + .5) * pw / n : g.l + (n <= 1 ? 0 : i * pw / (n - 1)); }
+  draw() {
+    const c = this.c, dpr = window.devicePixelRatio || 1; const g = this.geom();
+    if (!g.W) return;
+    c.width = g.W * dpr; c.height = g.H * dpr;
+    const x = c.getContext('2d'); x.scale(dpr, dpr);
+    const down = css('--down'), up = css('--up'), line = css('--line'), mute = css('--mute');
+    const pts = this.pts, n = pts.length;
+    const stacked = this.o.kind === 'bars';
+    let max = 0; for (const p of pts) max = Math.max(max, stacked ? p.d + p.u : Math.max(p.d, p.u));
+    const fixed = this.o.fixedMax ? this.o.fixedMax() : 0;      // user-chosen vertical scale (0 = automatic)
+    max = fixed > 0 ? fixed : niceMax(max * 1.05); const pw = g.W - g.l - g.r, ph = g.H - g.t - g.b;
+    const Y = (v) => g.t + ph - v / max * ph;
+    x.font = '11px "Segoe UI",system-ui,sans-serif'; x.fillStyle = mute; x.strokeStyle = line; x.lineWidth = 1; x.textAlign = 'right'; x.textBaseline = 'middle';
+    for (let i = 0; i <= 4; i++) { const v = max * i / 4, yy = Math.round(Y(v)) + .5; x.beginPath(); x.moveTo(g.l, yy); x.lineTo(g.W - g.r, yy); x.stroke(); x.fillText(this.o.yfmt(v), g.l - 6, yy); }
+    if (!n) return;
+    x.textAlign = 'center'; x.textBaseline = 'top';
+    const ticks = Math.max(2, Math.floor(pw / 90));
+    for (let k = 0; k <= ticks; k++) { const i = Math.round(k * (n - 1) / ticks); const xx = this.xAt(i, g); x.fillText(this.o.xfmt(pts[i].t), Math.max(g.l + 16, Math.min(g.W - 22, xx)), g.H - g.b + 5); }
+    if (stacked) {
+      const bw = Math.max(1, pw / n - (pw / n > 4 ? 1.5 : 0));
+      for (let i = 0; i < n; i++) {
+        const p = pts[i], xx = g.l + i * pw / n + (pw / n - bw) / 2;
+        const hd = p.d / max * ph, hu = p.u / max * ph;
+        x.fillStyle = down; x.fillRect(xx, g.t + ph - hd, bw, hd);
+        x.fillStyle = up; x.fillRect(xx, g.t + ph - hd - hu, bw, hu);
+      }
+    } else {
+      const X = (i) => this.xAt(i, g);
+      x.beginPath(); x.moveTo(X(0), Y(0));
+      for (let i = 0; i < n; i++) x.lineTo(X(i), Y(pts[i].d));
+      x.lineTo(X(n - 1), Y(0)); x.closePath(); x.globalAlpha = .18; x.fillStyle = down; x.fill(); x.globalAlpha = 1;
+      x.lineWidth = 1.6; x.lineJoin = 'round';
+      x.beginPath(); for (let i = 0; i < n; i++) i ? x.lineTo(X(i), Y(pts[i].d)) : x.moveTo(X(i), Y(pts[i].d)); x.strokeStyle = down; x.stroke();
+      x.beginPath(); for (let i = 0; i < n; i++) i ? x.lineTo(X(i), Y(pts[i].u)) : x.moveTo(X(i), Y(pts[i].u)); x.strokeStyle = up; x.stroke();
+    }
+    if (this.hover >= 0 && this.hover < n) { const xx = Math.round(this.xAt(this.hover, g)) + .5; x.strokeStyle = mute; x.setLineDash([3, 3]); x.beginPath(); x.moveTo(xx, g.t); x.lineTo(xx, g.t + ph); x.stroke(); x.setLineDash([]); }
+  }
+}
+function sparkSvg(arr) {
+  if (!arr.length) return '';
+  const w = 90, h = 22, mx = Math.max(1, ...arr.map((p) => p[0]));
+  const pts = arr.map((p, i) => [(i / Math.max(1, arr.length - 1)) * w, h - 1 - (p[0] / mx) * (h - 3)]);
+  const d = pts.map((p, i) => (i ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join('');
+  return `<svg width="${w}" height="${h}" style="vertical-align:middle"><path d="${d}" fill="none" stroke="var(--down)" stroke-width="1.4"/></svg>`;
+}
+
+// ---------- charts
+const liveFmt = { kind: 'area', yfmt: fmtRate, xfmt: (t) => hm(t) + ':' + pad(new Date(t * 1000).getSeconds()), tipfmt: (p) => `<b>${hms(p.t)}</b><br><span class="dn">&#8595; ${fmtRate(p.d)}</span> &nbsp; <span class="upc">&#8593; ${fmtRate(p.u)}</span>` };
+// main chart: time range and vertical scale are chosen by the user (defaults: live 20 min, automatic scale), remembered per browser
+const TC = { range: 'live', scale: 'auto', custom: 100, step: 3 };
+try { Object.assign(TC, JSON.parse(localStorage.getItem('tm.chart') || '{}')); } catch { /* defaults */ }
+const TRANGES = { live: 'last 20 minutes', '1h': 'last hour', '6h': 'last 6 hours', '24h': 'last 24 hours', '7d': 'last 7 days', '30d': 'last 30 days' };
+const scaleBytes = () => (TC.scale === 'auto' ? 0 : (TC.scale === 'custom' ? Number(TC.custom) : Number(TC.scale)) * 1e6 / 8);   // Mbps -> bytes/s
+const totalFmt = Object.assign({}, liveFmt, {
+  fixedMax: scaleBytes,
+  xfmt: (t) => (TC.range === 'live' ? hm(t) + ':' + pad(new Date(t * 1000).getSeconds()) : TC.range === '7d' || TC.range === '30d' ? dmy(t).slice(5) + (TC.range === '7d' ? ' ' + pad(new Date(t * 1000).getHours()) + 'h' : '') : hm(t)),
+  tipfmt: (p) => `<b>${TC.range === 'live' ? hms(p.t) : dmy(p.t) + ' ' + hm(p.t)}</b>${TC.range === 'live' ? '' : ' <span class="ipx">(average)</span>'}<br><span class="dn">&#8595; ${fmtRate(p.d)}</span> &nbsp; <span class="upc">&#8593; ${fmtRate(p.u)}</span>`,
+});
+const chTotal = new Chart($('#ch-total'), totalFmt);
+const chDLive = new Chart($('#ch-dlive'), liveFmt);
+let histStep = 3600;
+const histOpts = (getStep) => ({
+  kind: 'bars', yfmt: fmtBytes,
+  xfmt: (t) => { const s = getStep(); return s >= 86400 ? dmy(t).slice(5) : s >= 3600 ? dmy(t).slice(5) + ' ' + pad(new Date(t * 1000).getHours()) + 'h' : hm(t); },
+  tipfmt: (p) => { const s = getStep(); const when = s >= 86400 ? dmy(p.t) : dmy(p.t) + ' ' + hm(p.t) + (s >= 60 ? ' (+' + (s >= 3600 ? s / 3600 + 'h' : s / 60 + 'm') + ')' : ''); return `<b>${when}</b><br><span class="dn">&#8595; ${fmtBytes(p.d)}</span> &nbsp; <span class="upc">&#8593; ${fmtBytes(p.u)}</span>`; },
+});
+let uStep = 900, dStep = 900;
+const chUTotal = new Chart($('#ch-utotal'), histOpts(() => uStep));
+const chDHist = new Chart($('#ch-dhist'), histOpts(() => dStep));
+const toLive = (rows) => {
+  const a = rows.map((r) => { const p = pick(r.slice(1), S.scope); return { t: r[0], d: p.down, u: p.up }; });
+  return a.map((p, i) => { const w = a.slice(Math.max(0, i - 2), i + 1); return { t: p.t, d: w.reduce((s, x) => s + x.d, 0) / w.length, u: w.reduce((s, x) => s + x.u, 0) / w.length }; });
+};
+const toHist = (rows) => rows.map((r) => { const p = pick(r.slice(1), S.scope); return { t: r[0], d: p.down, u: p.up }; });
+
+// ---------- live view
+async function j(url) { const r = await fetch(url, { cache: 'no-store' }); if (!r.ok) throw new Error(r.status); return r.json(); }
+function devRow(d) {
+  const r = pick(d.rate, S.scope), t = pick(d.today, S.scope);
+  return { d, name: d.name || d.ip, down: r.down, up: r.up, tdown: t.down, tup: t.up, ttot: t.down + t.up, conns: d.conns, vlan: d.vlan || '' };
+}
+function renderLive() {
+  const L = S.live; if (!L) return;
+  const st = L.status;
+  $('#dot').className = 'dot' + (st.ok ? ' ok' : '');
+  const rn = (S.routers.find((r) => r.id === S.router) || {}).name || st.router;
+  $('#stat').textContent = st.ok ? `${rn} (${st.router}) connected` : `${rn}: ` + (st.error || 'no data');
+  $('#fmid').textContent = st.ok ? `${st.conns} connections tracked - poll ${st.pollMs} ms - updated ${hms(Math.floor(st.lastPoll / 1000))}` : '';
+  const e = $('#err'); e.style.display = st.ok ? 'none' : 'block'; e.textContent = st.ok ? '' : 'Cannot read the router (' + st.error + '). Retrying every 5 s.';
+  const tr = pick(L.total.rate, S.scope), tt = pick(L.total.today, S.scope);
+  $('#c-dn').textContent = fmtRate(tr.down); $('#c-up').textContent = fmtRate(tr.up);
+  const rows = L.devices.map(devRow);
+  const active = rows.filter((r) => r.down + r.up > 125);
+  const top = [...rows].sort((a, b) => b.down - a.down)[0];
+  $('#c-dn2').textContent = top && top.down > 0 ? 'Top: ' + (top.d.name || top.d.ip) + ' ' + fmtRate(top.down) : '';
+  const topu = [...rows].sort((a, b) => b.up - a.up)[0];
+  $('#c-up2').textContent = topu && topu.up > 0 ? 'Top: ' + (topu.d.name || topu.d.ip) + ' ' + fmtRate(topu.up) : '';
+  $('#c-today').textContent = fmtBytes(tt.down + tt.up);
+  $('#c-today2').innerHTML = `<span class="dn">&#8595; ${fmtBytes(tt.down)}</span> &nbsp; <span class="upc">&#8593; ${fmtBytes(tt.up)}</span>`;
+  $('#c-dev').textContent = active.length; $('#c-dev2').textContent = rows.length + ' seen today';
+  if (TC.range === 'live') chTotal.set(toLive(L.total.ring));
+  // filters
+  const vs = [...new Set(L.devices.map((d) => d.vlan).filter(Boolean))].sort();
+  const sel = $('#vf'); if ($$('option', sel).length !== vs.length + 1) { const cur = sel.value; sel.innerHTML = '<option value="">All networks</option>' + vs.map((v) => `<option>${esc(v)}</option>`).join(''); sel.value = cur; }
+  const q = S.q.toLowerCase(), tnow = Date.now();
+  // Steady list: rates are smoothed and a device that was active in the last 5 minutes stays listed, so rows do not
+  // pop in and out with every refresh. Re-sorting only happens every 8 s (or at once when you change sort / filter / search).
+  for (const r of rows) {
+    const e = S.ema[r.d.ip] || (S.ema[r.d.ip] = { down: r.down, up: r.up });
+    e.down += 0.35 * (r.down - e.down); e.up += 0.35 * (r.up - e.up); r.sdown = e.down; r.sup = e.up;
+    if (r.down + r.up > 125) S.act[r.d.ip] = tnow;
+    else if (!(r.d.ip in S.act) && r.d.spark.some((p) => p[0] + p[1] + p[2] + p[3] > 125)) S.act[r.d.ip] = tnow;   // seen active in the last 3 min before this page opened
+  }
+  const isActive = (r) => tnow - (S.act[r.d.ip] || 0) < 300000;
+  // blocked devices are always listed (they have no traffic), subject only to the network / status filters and the search
+  let list = rows.filter((r) => (!S.vf || r.vlan === S.vf) && (!S.sf || (S.sf === 'blocked' ? r.d.blocked : S.sf === 'limited' ? !!r.d.limit : true)) &&
+    (!S.onlyact || isActive(r) || r.d.blocked || S.sel === r.d.ip || S.sf) &&
+    (!q || (r.d.name + ' ' + r.d.ip + ' ' + r.d.mac + ' ' + r.vlan + (r.d.blocked ? ' blocked' : '') + (r.d.limit ? ' limited' : '')).toLowerCase().includes(q)));
+  const key = S.sort, dir = S.asc ? 1 : -1, kv = (r) => (key === 'down' ? r.sdown : key === 'up' ? r.sup : r[key]);
+  const cmp = (a, b) => (typeof kv(a) === 'string' ? kv(a).localeCompare(kv(b)) : kv(a) - kv(b)) * dir || b.sdown - a.sdown;
+  if (S.force || !S.order || tnow - S.lastSort > 8000) { list.sort(cmp); S.order = list.map((r) => r.d.ip); S.lastSort = tnow; S.force = false; }
+  else {
+    const pos = new Map(S.order.map((ip, i) => [ip, i]));
+    list = list.filter((r) => pos.has(r.d.ip)).sort((a, b) => pos.get(a.d.ip) - pos.get(b.d.ip)).concat(list.filter((r) => !pos.has(r.d.ip)).sort(cmp));
+  }
+  $('#count').textContent = list.length + ' of ' + rows.length + ' devices';
+  const tb = $('#tbl tbody');
+  tb.innerHTML = list.map((r) => `<tr data-ip="${r.d.ip}" class="${S.sel === r.d.ip ? 'sel' : ''}${r.d.blocked ? ' blk' : ''}">
+    <td class="l"><span class="nm">${esc(r.d.name || '(unnamed)')}</span> <span class="ipx">${r.d.ip}</span>${r.d.adUser ? ` <span class="ipx" title="Signed in to the staff Wi-Fi with this AD account">AD: ${esc(r.d.adUser)}</span>` : ''}${r.d.blocked ? ` <span class="chip blocked" title="Blocked from the internet${r.d.blockInfo && r.d.blockInfo.comment ? ': ' + esc(r.d.blockInfo.comment) : ''}">&#9940; BLOCKED${r.d.blockInfo && r.d.blockInfo.timeout ? ' &middot; ' + esc(r.d.blockInfo.timeout) + ' left' : ''}</span>` : ''}${r.d.limit ? (r.d.limit.source === 'quota' ? ` <span class="chip quota" title="Usage quota passed: limited to ${esc(r.d.limit.down)} down / ${esc(r.d.limit.up)} up${r.d.limit.until ? ' until ' + new Date(r.d.limit.until * 1000).toLocaleString() : ''}">QUOTA ${esc(r.d.limit.down)}</span>` : ` <span class="chip medium" title="limited: ${esc(r.d.limit.down)} down / ${esc(r.d.limit.up)} up">LIMITED ${esc(r.d.limit.down)}</span>`) : ''}</td>
+    <td class="l ipx">${esc(r.vlan)}</td>
+    <td class="${r.sdown > 125 ? 'dn' : 'idle'}">${fmtRate(r.sdown)}</td><td class="${r.sup > 125 ? 'upc' : 'idle'}">${fmtRate(r.sup)}</td>
+    <td>${sparkSvg(r.d.spark.map((p) => [pick(p, S.scope).down]))}</td>
+    <td>${fmtBytes(r.tdown)}</td><td>${fmtBytes(r.tup)}</td><td><b>${fmtBytes(r.ttot)}</b></td><td class="idle" title="${r.d.remotes || 0} different internet hosts">${r.conns}</td>
+    <td>${blockBtn(r.d.ip, r.d.name, r.d.blocked)} ${limitBtn(r.d.ip, r.d.name, r.d.limit)}</td></tr>`).join('') || '<tr><td colspan="10" class="empty">No devices match.</td></tr>';
+}
+// keep the Live layout in step with the real header height (it wraps on narrow windows)
+const setHH = () => document.documentElement.style.setProperty('--hh', document.querySelector('header').offsetHeight + 'px');
+window.addEventListener('resize', setHH); setHH(); setTimeout(setHH, 600);
+async function pollLive() {
+  try { S.live = await j(P() + '/live'); renderLive(); if (S.sel) refreshDetailLive(); }
+  catch (e) { $('#dot').className = 'dot'; $('#stat').textContent = 'Monitor service not reachable'; }
+}
+
+// ---------- usage view
+async function renderUsage() {
+  const per = S.uperiod;
+  const histRange = per === 'today' || per === '24h' ? '24h' : per;
+  const [h, rk] = await Promise.all([j(P() + '/history?ip=all&range=' + histRange), j(P() + '/ranking?range=' + per)]);
+  uStep = h.step; chUTotal.set(toHist(h.rows));
+  const q = $('#uq').value.toLowerCase();
+  let rows = rk.map((d) => { const p = pick([d.iu, d.id, d.lu, d.ld], S.scope); return { d, up: p.up, down: p.down, tot: p.up + p.down }; })
+    .filter((r) => r.tot > 0 && (!q || (r.d.name + ' ' + r.d.ip + ' ' + r.d.mac + ' ' + r.d.vlan).toLowerCase().includes(q)))
+    .sort((a, b) => b.tot - a.tot);
+  const sum = rows.reduce((s, r) => s + r.tot, 0), mx = rows.length ? rows[0].tot : 1;
+  $('#utotal').textContent = rows.length + ' devices, ' + fmtBytes(sum) + ' total';
+  $('#utbl tbody').innerHTML = rows.slice(0, 300).map((r, i) => `<tr data-ip="${r.d.ip}"><td class="l idle">${i + 1}</td>
+    <td class="l"><span class="nm">${esc(r.d.name || '(unnamed)')}</span> <span class="ipx">${r.d.ip}</span>${r.d.adUser ? ` <span class="ipx" title="Signed in to the staff Wi-Fi with this AD account">AD: ${esc(r.d.adUser)}</span>` : ''}</td><td class="l ipx">${esc(r.d.vlan)}</td>
+    <td class="dn">${fmtBytes(r.down)}</td><td class="upc">${fmtBytes(r.up)}</td><td><b>${fmtBytes(r.tot)}</b></td>
+    <td class="l"><div class="bar"><i style="width:${(r.down / mx * 100).toFixed(1)}%;background:var(--down)"></i><i style="width:${(r.up / mx * 100).toFixed(1)}%;background:var(--up)"></i></div></td></tr>`).join('')
+    || '<tr><td colspan="7" class="empty">No data for this period yet. History builds up while the monitor runs.</td></tr>';
+}
+
+// ---------- detail panel
+async function openDetail(ip) {
+  S.sel = ip; $('#detail').classList.add('open'); renderLive();
+  $('#d-name').textContent = ip; $('#d-sub').textContent = '';
+  await refreshDetailLive(); await refreshDetailHist();
+}
+function closeDetail() { S.sel = null; $('#detail').classList.remove('open'); renderLive(); }
+async function refreshDetailLive() {
+  const ip = S.sel; if (!ip) return;
+  try {
+    const R = await j(P() + '/ring?ip=' + ip); if (S.sel !== ip) return;
+    const dv = (S.live && S.live.devices.find((d) => d.ip === ip)) || R.dev || { ip, name: '', mac: '', vlan: '', rate: [0, 0, 0, 0], today: [0, 0, 0, 0] };
+    $('#d-name').textContent = dv.name || '(unnamed)'; if (dv.adUser) $('#d-name').textContent += '  (AD: ' + dv.adUser + ')';
+    $('#d-sub').textContent = [dv.ip, dv.mac, dv.vlan].filter(Boolean).join('  -  ');
+    $('#d-staff').checked = !!dv.staff;
+    const bb = $('#d-block'); bb.dataset.ip = ip; bb.dataset.name = dv.name || ''; bb.dataset.act = dv.blocked ? 'unblock' : 'block'; bb.textContent = dv.blocked ? 'Unblock internet' : 'Block internet';
+    const lb = $('#d-limit'); lb.dataset.ip = ip; lb.dataset.name = dv.name || ''; lb.dataset.act = dv.limit ? 'unlimit' : 'limit'; lb.textContent = dv.limit ? `Remove limit (${dv.limit.down}/${dv.limit.up})` : 'Limit speed';
+    const r = pick(dv.rate || [0, 0, 0, 0], S.scope), t = pick(dv.today || [0, 0, 0, 0], S.scope);
+    $('#d-dn').textContent = fmtRate(r.down); $('#d-up').textContent = fmtRate(r.up);
+    $('#d-today').textContent = fmtBytes(t.down + t.up);
+    $('#d-today2').innerHTML = `<span class="dn">&#8595; ${fmtBytes(t.down)}</span> &nbsp; <span class="upc">&#8593; ${fmtBytes(t.up)}</span>`;
+    chDLive.set(toLive(R.rows));
+    $('#ftbl tbody').innerHTML = R.flows.filter((f) => S.scope === 'all' || (S.scope === 'inet') === f.inet).map((f) => `<tr><td class="l">${f.host ? esc(f.host) + ' <span class="ipx">' + f.remote + '</span>' : f.remote}${f.inet ? '' : ' <span class="ipx">(LAN)</span>'}</td>
+      <td class="l ipx">${f.port}${PORTS[f.port] ? ' ' + PORTS[f.port] : ''} ${f.proto}</td><td class="dn">${fmtRate(f.down)}</td><td class="upc">${fmtRate(f.up)}</td><td>${f.inet ? ipBtn(f.remote, f.host) : ''}</td></tr>`).join('')
+      || '<tr><td colspan="5" class="empty">No traffic in the last poll.</td></tr>';
+  } catch (e) { /* ignore */ }
+}
+async function refreshDetailHist() {
+  const ip = S.sel; if (!ip) return;
+  try {
+    const h = await j(`${P()}/history?ip=${ip}&range=${S.drange}`); if (S.sel !== ip) return;
+    dStep = h.step; const pts = toHist(h.rows); chDHist.set(pts);
+    const d = pts.reduce((s, p) => s + p.d, 0), u = pts.reduce((s, p) => s + p.u, 0);
+    $('#d-histsum').innerHTML = `In this period: <span class="dn">&#8595; ${fmtBytes(d)}</span> &nbsp; <span class="upc">&#8593; ${fmtBytes(u)}</span> &nbsp; total <b>${fmtBytes(d + u)}</b>`;
+  } catch (e) { /* ignore */ }
+}
+
+// ---------- events
+const VIEWS = ['live', 'staff', 'usage', 'dest', 'ext', 'abuse', 'sec', 'blocked', 'pres', 'privacy', 'audit', 'reports', 'wifi', 'setup', 'config'];
+function showView(v) {
+  S.view = v; for (const x of VIEWS) $('#v-' + x).hidden = x !== v;
+  $$('#tabs button').forEach((b) => b.classList.toggle('on', b.dataset.v === v));
+  const run = { setup: () => window.renderSetup && window.renderSetup(), live: () => { renderLive(); chTotal.draw(); }, staff: () => ($('#sfrom').value ? renderStaff() : applyPreset('7d')), usage: renderUsage, dest: () => { renderDest(); renderConc(); }, ext: renderExt, abuse: renderAbuse, sec: renderSec, blocked: renderBlocked, pres: renderPres, privacy: renderPrivacy, audit: renderAudit, reports: () => {}, wifi: renderWifi, config: renderConfig }[v];
+  Promise.resolve(run()).catch(() => {});
+}
+$('#tabs').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) showView(b.dataset.v); });
+
+// ---------- staff view
+const ymd = (d) => d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
+const ST = { people: [], series: [], sel: null, from: '', to: '' };
+function applyPreset(p) {
+  const t = new Date(), d = (n) => { const x = new Date(t); x.setDate(x.getDate() + n); return x; };
+  let f, to = ymd(t);
+  if (p === 'today') f = to; else if (p === 'yesterday') f = to = ymd(d(-1));
+  else if (p === 'week') { const wd = (t.getDay() - (window.I18N ? I18N.weekStart : 1) + 7) % 7; f = ymd(d(-wd)); }
+  else if (p === '7d') f = ymd(d(-6)); else if (p === '30d') f = ymd(d(-29));
+  else if (p === 'month') f = ymd(new Date(t.getFullYear(), t.getMonth(), 1));
+  else if (p === 'lmonth') { f = ymd(new Date(t.getFullYear(), t.getMonth() - 1, 1)); to = ymd(new Date(t.getFullYear(), t.getMonth(), 0)); }
+  else { f = '1999-01-01'; }
+  $$('#spreset button').forEach((x) => x.classList.toggle('on', x.dataset.v === p));
+  $('#sfrom').value = f === '1999-01-01' ? '' : f; $('#sto').value = to; ST.from = f; ST.to = to; ST.sel = null;
+  renderStaff();
+}
+async function renderStaff() {
+  const from = ST.from || $('#sfrom').value, to = ST.to || $('#sto').value;
+  const R = await j(`${P()}/staff?from=${from || '1999-01-01'}&to=${to}`);
+  if (!ST.from || ST.from === '1999-01-01') $('#sfrom').value = R.from;
+  ST.people = R.people; ST.series = R.series;
+  $('#sexport').href = `${P()}/export.csv?from=${R.from}&to=${R.to}&staff=1`;
+  const q = $('#sq').value.toLowerCase();
+  const rows = R.people.map((p) => { const x = pick([p.iu, p.id, p.lu, p.ld], S.scope); return { p, up: x.up, down: x.down, tot: x.up + x.down }; })
+    .filter((r) => r.tot > 0 && (!q || (r.p.name + ' ' + r.p.ips.join(' ') + ' ' + r.p.mac + ' ' + r.p.vlan).toLowerCase().includes(q)))
+    .sort((a, b) => b.tot - a.tot);
+  const tot = rows.reduce((s, r) => s + r.tot, 0), dn = rows.reduce((s, r) => s + r.down, 0), up = rows.reduce((s, r) => s + r.up, 0), mx = rows.length ? rows[0].tot : 1;
+  $('#s-tot').textContent = fmtBytes(tot); $('#s-tot2').innerHTML = `<span class="dn">&#8595; ${fmtBytes(dn)}</span> &nbsp; <span class="upc">&#8593; ${fmtBytes(up)}</span>`;
+  $('#s-n').textContent = rows.length; $('#s-n2').textContent = R.people.length + ' staff devices in the data';
+  $('#s-avg').textContent = rows.length ? fmtBytes(tot / rows.length) : '-'; $('#s-avg2').textContent = 'for the whole period';
+  const ser = R.series.map((r) => { const x = pick(r.slice(1), S.scope); return { t: r[0], d: x.down, u: x.up }; });
+  const pk = ser.reduce((a, b) => (b.d + b.u > a.d + a.u ? b : a), { t: 0, d: 0, u: 0 });
+  $('#s-peak').textContent = pk.t ? fmtBytes(pk.d + pk.u) : '-'; $('#s-peak2').textContent = pk.t ? dmy(pk.t) : '';
+  $('#s-count').textContent = rows.length + ' devices, ' + R.from + ' to ' + R.to;
+  $('#stbl tbody').innerHTML = rows.slice(0, 500).map((r, i) => `<tr data-key="${esc(r.p.key)}" class="${ST.sel === r.p.key ? 'sel' : ''}"><td class="l idle">${i + 1}</td>
+    <td class="l"><span class="nm" data-ip="${r.p.ips[0]}" data-name="${esc(r.p.name)}">${esc(r.p.name || '(unnamed)')}</span> <span class="ipx">${esc(r.p.ips.join(', '))}</span></td>
+    <td class="l ipx">${esc(r.p.vlan)}</td><td class="idle">${r.p.days}</td>
+    <td class="dn">${fmtBytes(r.down)}</td><td class="upc">${fmtBytes(r.up)}</td><td><b>${fmtBytes(r.tot)}</b></td><td class="idle">${fmtBytes(r.tot / Math.max(1, r.p.days))}</td>
+    <td class="l"><div class="bar"><i style="width:${(r.down / mx * 100).toFixed(1)}%;background:var(--down)"></i><i style="width:${(r.up / mx * 100).toFixed(1)}%;background:var(--up)"></i></div></td>
+    <td><button class="mini" data-rm="${esc(r.p.ips.join(','))}" title="Not staff: remove from this list">remove</button></td></tr>`).join('')
+    || '<tr><td colspan="10" class="empty">No staff data in this period yet. History builds while the monitor runs.</td></tr>';
+  await renderStaffChart();
+}
+async function renderStaffChart() {
+  const p = ST.sel && ST.people.find((x) => x.key === ST.sel);
+  $('#s-reset').hidden = !p; $('#s-title').textContent = p ? (p.name || p.ips[0]) + ' - usage per day' : 'All staff - usage per day';
+  let rows = ST.series;
+  if (p) rows = (await j(`${P()}/persondays?from=${ST.from || '1999-01-01'}&to=${$('#sto').value}&ips=${p.ips.join(',')}`)).rows;
+  sStep = 86400; chStaff.set(toHist(rows));
+}
+let sStep = 86400;
+const chStaff = new Chart($('#ch-staff'), histOpts(() => sStep));
+$('#spreset').addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) applyPreset(b.dataset.v); });
+for (const id of ['#sfrom', '#sto']) $(id).addEventListener('change', () => { ST.from = $('#sfrom').value; ST.to = $('#sto').value; ST.sel = null; $$('#spreset button').forEach((x) => x.classList.remove('on')); renderStaff(); });
+$('#sq').addEventListener('input', renderStaff);
+$('#s-reset').addEventListener('click', () => { ST.sel = null; renderStaff(); });
+$('#stbl tbody').addEventListener('click', async (e) => {
+  const rm = e.target.closest('[data-rm]');
+  if (rm) { await fetch(P() + '/setstaff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ips: rm.dataset.rm.split(','), staff: false }) }); return renderStaff(); }
+  const tr = e.target.closest('tr[data-key]'); if (tr) { ST.sel = ST.sel === tr.dataset.key ? null : tr.dataset.key; renderStaff(); }
+});
+$('#stbl tbody').addEventListener('dblclick', async (e) => {
+  const n = e.target.closest('.nm'); if (!n) return;
+  const v = await uiPrompt('Rename device', 'Name for ' + n.dataset.ip + ' (leave empty for the automatic name)', n.dataset.name, { ok: 'Save' }); if (v === null) return;
+  await fetch(P() + '/name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip: n.dataset.ip, name: v }) }); renderStaff();
+});
+$('#d-staff').addEventListener('change', async (e) => {
+  if (!S.sel) return;
+  await fetch(P() + '/setstaff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ips: [S.sel], staff: e.target.checked }) });
+  pollLive();
+});
+$('#scope').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#scope button').forEach((x) => x.classList.toggle('on', x === b)); S.scope = b.dataset.v; S.force = true; renderLive(); if (S.view === 'usage') renderUsage(); if (S.sel) { refreshDetailLive(); refreshDetailHist(); } });
+$('#uperiod').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#uperiod button').forEach((x) => x.classList.toggle('on', x === b)); S.uperiod = b.dataset.v; renderUsage(); });
+$('#drange').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#drange button').forEach((x) => x.classList.toggle('on', x === b)); S.drange = b.dataset.v; refreshDetailHist(); });
+$('#q').addEventListener('input', (e) => { S.q = e.target.value; S.force = true; renderLive(); });
+$('#uq').addEventListener('input', renderUsage);
+$('#vf').addEventListener('change', (e) => { S.vf = e.target.value; S.force = true; renderLive(); });
+$('#sf').addEventListener('change', (e) => { S.sf = e.target.value; S.force = true; renderLive(); });
+$('#onlyact').addEventListener('change', (e) => { S.onlyact = e.target.checked; S.force = true; renderLive(); });
+$('#tbl thead').addEventListener('click', (e) => { const th = e.target.closest('th'); if (!th || !th.dataset.k) return; const k = th.dataset.k; if (S.sort === k) S.asc = !S.asc; else { S.sort = k; S.asc = k === 'name' || k === 'vlan'; } $$('#tbl th').forEach((x) => { x.classList.toggle('sorted', x === th); x.classList.toggle('asc', x === th && S.asc); }); S.force = true; renderLive(); });
+$('#tbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-ip]'); if (tr) openDetail(tr.dataset.ip); });
+$('#utbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-ip]'); if (tr) openDetail(tr.dataset.ip); });
+$('#d-close').addEventListener('click', closeDetail);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeDetail(); });
+$('#d-rename').addEventListener('click', async () => {
+  const ip = S.sel; if (!ip) return;
+  const dv = S.live && S.live.devices.find((d) => d.ip === ip);
+  const n = await uiPrompt('Rename device', 'Name for ' + ip + ' (leave empty for the automatic name)', dv ? dv.name : '', { ok: 'Save' });
+  if (n === null) return;
+  await fetch(P() + '/name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ip, name: n }) });
+  pollLive();
+});
+
+// ---------- routers
+S.routers = []; S.router = '';
+try { S.router = localStorage.getItem('tm.router') || ''; } catch { /* ignore */ }
+function P() { return '/api/r/' + encodeURIComponent(S.router) + '/api'; }
+$('#yr').textContent = new Date().getFullYear();
+async function loadRouters(keep) {
+  S.routers = await (await fetch('/api/routers', { cache: 'no-store' })).json();
+  if (!S.routers.some((r) => r.id === S.router)) S.router = S.routers[0] && S.routers[0].id || '';
+  const sel = $('#router');
+  sel.innerHTML = S.routers.map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join('');
+  sel.value = S.router;
+  if (!keep) switchRouter(S.router);
+}
+function switchRouter(id) {
+  S.router = id; try { localStorage.setItem('tm.router', id); } catch { /* ignore */ }
+  $('#router').value = id;
+  S.live = null; S.sel = null; ST.sel = null; $('#detail').classList.remove('open'); S.ema = {}; S.act = {}; S.order = null; S.force = true;
+  $('#tbl tbody').innerHTML = '<tr><td colspan="9" class="empty">Loading...</td></tr>';
+  pollLive();
+  if (S.view !== 'live') showView(S.view);
+}
+$('#router').addEventListener('change', (e) => switchRouter(e.target.value));
+
+// manage routers dialog
+let editId = null;
+const rf = (id) => $('#rf-' + id);
+function rfMsg(t, bad) { const m = rf('msg'); m.textContent = t; m.style.color = bad ? 'var(--bad)' : 'var(--ok)'; }
+function rfReset() { editId = null; for (const k of ['name', 'host', 'user', 'pw', 'dns']) rf(k).value = ''; rf('port').value = '8728'; rf('user').disabled = false; rf('title').textContent = 'Add a router'; rf('cancel').hidden = true; rfMsg(''); rf('pw').placeholder = ''; }
+async function renderRouterTable() {
+  await loadRouters(true);
+  $('#rtbl tbody').innerHTML = S.routers.map((r) => { const st = r.status; const ok = st && st.ok;
+    return `<tr><td class="l"><b>${esc(r.name)}</b>${r.id === S.router ? ' <span class="ipx">(shown)</span>' : ''}</td><td class="l">${esc(r.host)}:${r.port}</td><td class="l ipx">${esc(r.user)}</td>
+    <td class="l"><span class="dot ${ok ? 'ok' : ''}" style="display:inline-block"></span> <span class="ipx">${ok ? st.conns + ' connections' : esc((st && st.error) || 'starting / no answer')}</span></td>
+    <td><button class="mini" data-show="${esc(r.id)}">show</button> <button class="mini" data-edit="${esc(r.id)}">edit</button> ${S.routers.length > 1 ? `<button class="mini" data-del="${esc(r.id)}">delete</button>` : ''}</td></tr>`; }).join('');
+}
+function openManage() { $('#rmodal').hidden = false; rfReset(); renderRouterTable(); }
+$('#manage').addEventListener('click', openManage);
+$('#rm-close').addEventListener('click', () => { $('#rmodal').hidden = true; loadRouters(true); });
+$('#rmodal').addEventListener('click', (e) => { if (e.target.id === 'rmodal') { $('#rmodal').hidden = true; loadRouters(true); } });
+$('#rtbl tbody').addEventListener('click', async (e) => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.show) { switchRouter(b.dataset.show); $('#rmodal').hidden = true; return; }
+  if (b.dataset.edit) {
+    const r = S.routers.find((x) => x.id === b.dataset.edit); editId = r.id;
+    rf('name').value = r.name; rf('host').value = r.host; rf('port').value = r.port; rf('dns').value = r.dns || '';
+    rf('user').value = r.user; rf('user').disabled = false; rf('pw').value = ''; rf('pw').placeholder = '(leave empty to keep)';
+    rf('pw').disabled = r.main; rf('title').textContent = 'Edit "' + r.name + '"'; rf('cancel').hidden = false; rfMsg(''); return;
+  }
+  if (b.dataset.del) {
+    const r = S.routers.find((x) => x.id === b.dataset.del);
+    if (!(await uiConfirm('Remove router?', `Remove "${r.name}" from the list?\nIts collected history stays on disk (data\\routers) but is no longer shown.`, { ok: 'Remove', danger: true }))) return;
+    const x = await (await fetch('/api/routers/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id }) })).json();
+    if (!x.ok) { rfMsg(x.error, true); return; }
+    if (S.router === r.id) S.router = ''; await loadRouters(); renderRouterTable();
+  }
+});
+function rfBody() { return { id: editId, name: rf('name').value, host: rf('host').value.trim(), port: Number(rf('port').value), user: rf('user').value.trim(), password: rf('pw').value, dns: rf('dns').value.trim() }; }
+async function rfPost(url) { return (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rfBody()) })).json(); }
+rf('cancel').addEventListener('click', () => { rfReset(); rf('pw').disabled = false; });
+rf('test').addEventListener('click', async () => {
+  rfMsg('Testing...'); rf('test').disabled = true;
+  try { const x = await rfPost('/api/routers/test'); rfMsg(x.ok ? 'Connected - router identity: ' + (x.identity || '?') : x.error, !x.ok); } finally { rf('test').disabled = false; }
+});
+rf('save').addEventListener('click', async () => {
+  rfMsg('Saving...'); rf('save').disabled = true;
+  try {
+    const x = await rfPost('/api/routers');
+    if (!x.ok) return rfMsg(x.error, true);
+    const wasEdit = !!editId; rfReset(); rf('pw').disabled = false;
+    await loadRouters(true); if (!wasEdit) { switchRouter(x.id); } await renderRouterTable();
+    rfMsg(wasEdit ? 'Saved.' : 'Router added and now monitored (history starts now).');
+  } finally { rf('save').disabled = false; }
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('#rmodal').hidden) { $('#rmodal').hidden = true; } });
+
+// ================= block / unblock =================
+async function postJson(url, body) { const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); return r.json(); }
+function blockBtn(ip, name, blocked) {
+  return blocked ? `<button class="mini" data-act="unblock" data-ip="${ip}" data-name="${esc(name || '')}">Unblock</button>`
+    : `<button class="mini" data-act="block" data-ip="${ip}" data-name="${esc(name || '')}" title="Block this device from the internet">Block</button>`;
+}
+let BK = { ip: '', name: '', remote: false };
+function openBlock(ip, name, remote) {
+  BK = { ip, name, remote: !!remote };
+  $('#b-help').textContent = remote ? 'Every packet from this internet address to the router or the internal network is dropped, and local devices can no longer reach it. Use it for scanners, brute-force attempts and other attackers. You can unblock it again in the Blocked tab.' : 'The device keeps its local network access, but every connection to the internet is dropped and open ones are cut. It unblocks itself when the time ends.';
+  $('#b-dur').value = remote ? '10080' : '60'; $('#b-go').textContent = remote ? 'Block address' : 'Block internet';
+  $('#b-title').textContent = remote ? 'Block internet address ' + ip : 'Block internet for ' + (name || ip); $('#b-sub').textContent = ip; $('#b-msg').textContent = ''; $('#b-go').disabled = false; $('#bmodal').hidden = false;
+}
+$('#b-close').addEventListener('click', () => { $('#bmodal').hidden = true; });
+$('#b-cancel').addEventListener('click', () => { $('#bmodal').hidden = true; });
+$('#b-go').addEventListener('click', async () => {
+  let m = $('#b-dur').value; if (m === 'eod') { const e = new Date(); e.setHours(23, 59, 0, 0); m = Math.max(1, Math.ceil((e - Date.now()) / 60000)); }
+  $('#b-go').disabled = true; $('#b-msg').style.color = 'var(--mute)'; $('#b-msg').textContent = 'Blocking...';
+  try {
+    const x = BK.remote ? await postJson(P() + '/ipblock', { addr: BK.ip, minutes: Number(m), note: BK.name }) : await postJson(P() + '/block', { ip: BK.ip, minutes: Number(m), note: BK.name });
+    if (!x.ok) { $('#b-msg').style.color = 'var(--bad)'; $('#b-msg').textContent = x.error; $('#b-go').disabled = false; return; }
+    $('#bmodal').hidden = true; if (BK.remote) toast('Address ' + BK.ip + ' blocked', 'ok'); await afterBlockChange();
+  } catch (e) { $('#b-msg').textContent = 'Failed'; $('#b-go').disabled = false; }
+});
+async function afterBlockChange() { await pollLive(); loadRouters(true); if (S.view === 'blocked') renderBlocked(); if (S.view === 'abuse') renderAbuse(); if (S.view === 'sec') renderSec(); }
+document.addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-act]'); if (!b || b.dataset.act === 'watch') return;
+  e.stopPropagation(); e.preventDefault();
+  const a = b.dataset.act, ip = b.dataset.ip, name = b.dataset.name;
+  if (a === 'block') openBlock(ip, name);
+  else if (a === 'ipblock') openBlock(ip, name, true);
+  else if (a === 'whois') openWhois(ip);
+  else if (a === 'ipunblock') { if (!(await uiConfirm('Unblock address?', 'Allow ' + ip + ' to reach the network again?', { ok: 'Unblock' }))) return; const x = await postJson(P() + '/ipunblock', { addr: ip }); toast(x.ok ? ip + ' unblocked' : x.error, x.ok ? 'ok' : 'bad'); await afterBlockChange(); }
+  else if (a === 'unblock') { if (!(await uiConfirm('Restore internet?', 'Give ' + (name || ip) + ' internet access again?', { ok: 'Unblock' }))) return; const x = await postJson(P() + '/unblock', { ip }); toast(x.ok ? (name || ip) + ' can use the internet again' : x.error, x.ok ? 'ok' : 'bad'); await afterBlockChange(); }
+  else if (a === 'limit') openLimit(ip, name);
+  else if (a === 'unlimit') { if (!(await uiConfirm('Remove speed limit?', 'Remove the speed limit of ' + (name || ip) + '?\nThe group default rule still applies.', { ok: 'Remove limit' }))) return; const x = await postJson(P() + '/qos/device/clear', { ip }); toast(x.ok ? 'Speed limit removed' : x.error, x.ok ? 'ok' : 'bad'); await afterBlockChange(); }
+  else if (a === 'open') openDetail(ip);
+  else if (a === 'ignore') { if (!(await uiConfirm('Ignore this device?', 'Stop security alerts for ' + (name || ip) + '?\nUse this for servers that scan on purpose (monitoring, controllers).', { ok: 'Ignore' }))) return; await postJson(P() + '/secignore', { ip, ignore: true }); renderSec(); }
+  else if (a === 'unignore') { await postJson(P() + '/secignore', { ip, ignore: false }); renderSec(); }
+  else if (a === 'ack') { await postJson(P() + '/secack', { id: Number(b.dataset.id) }); renderSec(); loadRouters(true); }
+  else if (a === 'ackdev') { await postJson(P() + '/secack', { ip }); renderSec(); loadRouters(true); }
+  else if (a === 'remote') toggleRemote(b);
+}, true);
+
+// ================= destination types =================
+const TYPE_ORDER = ['Video streaming', 'Social media', 'Messaging', 'Google / YouTube', 'Microsoft / Updates', 'Apple', 'CDN / Cloud', 'Hosting / VPS', 'Video calls / VoIP', 'Mail', 'DNS', 'Gaming', 'Torrent / P2P', 'VPN / Tunnel', 'Remote access', 'IoT / MQTT', 'Iran (.ir)', 'Local network', 'Other / Unknown'];
+const tcol = (t) => (t === 'Other / Unknown' ? 'var(--mute)' : `hsl(${(Math.max(0, TYPE_ORDER.indexOf(t)) * 47) % 360} 60% 52%)`);
+const typeChip = (t) => `<span class="chip" style="border-left:4px solid ${tcol(t)}">${esc(t)}</span>`;
+function typeBars(el, items) { // items [{type, v, sub}]
+  const tot = items.reduce((s, x) => s + x.v, 0) || 1, mx = items.length ? items[0].v || 1 : 1;
+  el.innerHTML = items.slice(0, 14).map((x) => `<div class="tb"><span class="l" title="${esc(x.type)}">${esc(x.type)}</span><div class="bar"><i style="width:${(x.v / mx * 100).toFixed(1)}%;background:${tcol(x.type)}"></i></div><span class="v">${x.sub} &middot; ${(x.v / tot * 100).toFixed(0)}%</span></div>`).join('') || '<div class="empty">No data yet.</div>';
+}
+const DS = { period: 'now' };
+const remoteName = (r) => (r.name ? `${esc(r.name)} <span class="ipx">${r.ip}</span>` : r.ip);
+async function renderDest() {
+  const q = ($('#dq').value || '').toLowerCase(), now = DS.period === 'now';
+  $('#dcpanel').hidden = !now;
+  $('#dh-down').textContent = now ? 'Download now' : 'Download'; $('#dh-up').textContent = now ? 'Upload now' : 'Upload'; $('#dh-c').textContent = now ? 'Conns' : 'Active samples';
+  if (now) {
+    const R = await j(P() + '/destnow');
+    typeBars($('#dtypes'), R.types.map((t) => ({ type: t.type, v: t.up + t.down, sub: `${fmtRate(t.down + t.up)} (${t.conns} conns)` })));
+    $('#dtypes-t').textContent = 'Destination types - right now'; $('#dtitle').textContent = 'Top destinations right now (by speed)';
+    const f = (r) => !q || (r.ip + ' ' + r.name + ' ' + r.org + ' ' + r.type).toLowerCase().includes(q);
+    $('#dtbl tbody').innerHTML = R.remotes.filter(f).map((r) => `<tr data-act="remote" data-ip="${r.ip}"><td class="l">${remoteName(r)}</td><td class="l ipx">${esc(r.org)}</td><td class="l">${typeChip(r.type)}</td><td class="dn">${fmtRate(r.down)}</td><td class="upc">${fmtRate(r.up)}</td><td>${r.devices}</td><td class="idle">${r.conns}</td><td>${ipBtn(r.ip, r.name)}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">Nothing yet.</td></tr>';
+    $('#dctbl tbody').innerHTML = R.byConns.filter(f).map((r) => `<tr data-act="remote" data-ip="${r.ip}"><td class="l">${remoteName(r)}</td><td class="l ipx">${esc(r.org)}</td><td class="l">${typeChip(r.type)}</td><td><b>${r.conns}</b></td><td>${r.devices}</td><td class="dn">${fmtRate(r.down)}</td><td>${ipBtn(r.ip, r.name)}</td></tr>`).join('');
+  } else {
+    const R = await j(`${P()}/dest?period=${DS.period}`);
+    typeBars($('#dtypes'), R.types.map((t) => ({ type: t.type, v: t.up + t.down, sub: `${fmtBytes(t.down + t.up)} (${t.remotes} hosts)` })));
+    $('#dtypes-t').textContent = 'Destination types - ' + DS.period; $('#dtitle').textContent = `Top destinations (${R.total} different hosts, ${R.from} to ${R.to})`;
+    const f = (r) => !q || (r.ip + ' ' + r.name + ' ' + r.org + ' ' + r.type).toLowerCase().includes(q);
+    $('#dtbl tbody').innerHTML = R.remotes.filter(f).map((r) => `<tr data-act="remote" data-ip="${r.ip}"><td class="l">${remoteName(r)}</td><td class="l ipx">${esc(r.org)}</td><td class="l">${typeChip(r.type)}</td><td class="dn">${fmtBytes(r.down)}</td><td class="upc">${fmtBytes(r.up)}</td><td>${r.devices}</td><td class="idle">${r.hits}</td><td>${ipBtn(r.ip, r.name)}</td></tr>`).join('') || '<tr><td colspan="8" class="empty">No data for this period yet.</td></tr>';
+  }
+}
+async function toggleRemote(tr) {
+  const next = tr.nextElementSibling;
+  if (next && next.classList.contains('subrow')) { next.remove(); return; }
+  const rows = await j(`${P()}/remote?ip=${tr.dataset.ip}&period=${DS.period === 'now' ? 'today' : DS.period}`);
+  const td = document.createElement('tr'); td.className = 'subrow';
+  td.innerHTML = `<td colspan="7"><b>Devices talking to ${tr.dataset.ip}</b> (${DS.period === 'now' ? 'today' : DS.period}): ` + (rows.map((d) => `<a href="#" data-act="open" data-ip="${d.ip}">${esc(d.name || d.ip)}</a> <span class="ipx">${fmtBytes(d.down)} down / ${fmtBytes(d.up)} up</span>`).join(' &middot; ') || 'none recorded yet') + '</td>';
+  tr.after(td);
+}
+$('#dperiod').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#dperiod button').forEach((x) => x.classList.toggle('on', x === b)); DS.period = b.dataset.v; renderDest(); });
+$('#dq').addEventListener('input', () => renderDest());
+
+// ================= external IPs + whois =================
+const XT = { days: 7, src: 'all', timer: null };
+const wchip = (w) => (w && w.country ? `<span class="chip">${esc(w.country)}</span>` : '<span class="idle">-</span>');
+async function renderExt() {
+  clearTimeout(XT.timer);
+  const q = encodeURIComponent($('#xq').value.trim());
+  const R = await j(`${P()}/extips?days=${XT.days}&src=${XT.src}&q=${q}`);
+  await loadIpBlocked();
+  $('#x-title').textContent = `${R.total.toLocaleString()} addresses${R.total > R.rows.length ? ' (first ' + R.rows.length + ' shown)' : ''}`;
+  $('#x-info').textContent = `Last ${R.days} day(s) from ${R.from}. Whois known for ${R.rows.length - R.todo} of ${R.rows.length} shown` + (R.queued ? `, looking up ${R.queued} more...` : R.todo ? ' (press "Look up all" to fetch the rest).' : '.') + (R.logOldest ? ` Router log kept here since ${R.logOldest}.` : '');
+  $('#x-csv').href = `${P()}/extips?days=${XT.days}&src=${XT.src}&q=${q}&format=csv`;
+  $('#xtbl tbody').innerHTML = R.rows.map((e) => {
+    const w = e.w, seen = [];
+    if (e.lists.length) seen.push(...e.lists.map((l) => `<span class="chip high">${esc(l)}</span>`));
+    if (e.logN) seen.push(`<span class="chip medium" title="${esc(e.sample)}">router log x${e.logN}</span>`);
+    if (e.devices) seen.push(`<span class="chip">${e.devices} device${e.devices > 1 ? 's' : ''}</span>`);
+    return `<tr data-ip="${e.ip}"><td class="l"><b>${e.ip}</b>${e.name ? '<div class="ipx">' + esc(e.name) + '</div>' : ''}</td><td class="l">${wchip(w)}</td>
+      <td class="l">${w ? esc(w.org || w.net || '') : '<span class="idle">looking up...</span>'}${w && w.abuse ? '<div class="ipx">' + esc(w.abuse) + '</div>' : ''}${w && w.error && !w.org ? '<div class="ipx">' + esc(w.error) + '</div>' : ''}</td>
+      <td class="l ipx">${w ? esc([w.asn, w.prefix || w.net].filter(Boolean).join(' - ')) : ''}${e.type && e.type !== 'Other / Unknown' ? '<div>' + esc(e.type) + '</div>' : ''}</td>
+      <td class="l wrapc">${seen.join(' ') || '<span class="idle">-</span>'}</td>
+      <td>${e.bytes ? fmtBytes(e.bytes) : '<span class="idle">-</span>'}</td><td class="l ipx">${esc(e.logLast || e.lastDay || '')}</td><td>${ipBtn(e.ip, e.name)}</td></tr>`;
+  }).join('') || '<tr><td colspan="8" class="empty">Nothing for this selection yet. The router log is read every 2 minutes.</td></tr>';
+  if (R.queued) XT.timer = setTimeout(() => { if (S.view === 'ext') renderExt().catch(() => {}); }, 5000);
+}
+$('#xperiod').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#xperiod button').forEach((x) => x.classList.toggle('on', x === b)); XT.days = Number(b.dataset.v); renderExt(); });
+$('#xsrc').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#xsrc button').forEach((x) => x.classList.toggle('on', x === b)); XT.src = b.dataset.v; renderExt(); });
+{ let t; $('#xq').addEventListener('input', () => { clearTimeout(t); t = setTimeout(renderExt, 350); }); }
+$('#x-all').addEventListener('click', async () => {
+  const x = await postJson(P() + '/whois/all', { days: XT.days, src: XT.src, q: $('#xq').value.trim() });
+  toast(x.queued ? `Looking up ${x.queued} addresses in the background (about 3 per second)` : 'Everything in this list is already looked up', 'ok'); renderExt();
+});
+$('#xtbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-ip]'); if (tr && !e.target.closest('[data-act]')) openWhois(tr.dataset.ip); });
+
+const WH = { ip: '', raw: '' };
+function wrow(k, v) { return v ? `<tr><td class="l ipx" style="white-space:nowrap;padding-right:14px">${esc(k)}</td><td class="l">${v}</td></tr>` : ''; }
+async function openWhois(ip, refresh) {
+  WH.ip = ip; WH.raw = ''; $('#wmodal').hidden = false; $('#w-pre').hidden = true; $('#w-raw').textContent = 'Show raw whois'; $('#w-msg').textContent = '';
+  $('#w-ip').textContent = ip; $('#w-sub').textContent = 'Looking up the registry...'; $('#w-body').innerHTML = '<div class="empty">Loading...</div>';
+  try {
+    const R = await j(`${P()}/whois?ip=${encodeURIComponent(ip)}${refresh ? '&refresh=1' : ''}`); if (WH.ip !== ip) return;
+    const w = R.whois || {};
+    $('#w-sub').textContent = [w.org || w.net, w.country].filter(Boolean).join(' - ') + (w.viaBlock ? '  (from the same network block, cached)' : '');
+    const log = R.routerLog;
+    $('#w-body').innerHTML = '<table>' + [
+      wrow('Owner / organisation', esc(w.org || '')), wrow('Network name', esc(w.net || '')), wrow('Country', esc(w.country || '')), wrow('Address range', esc(w.range || '')), wrow('CIDR', esc(w.cidr || '')),
+      wrow('AS number', esc(w.asn || '')), wrow('AS name', esc(w.asnName || '')), wrow('Announced prefix', esc(w.prefix || '')), wrow('Reverse DNS', esc(R.rdns || '')), wrow('Allocation', esc([w.type, w.handle].filter(Boolean).join(' - '))),
+      wrow('Abuse contact', esc(w.abuse || '')), wrow('Registered / changed', esc([w.created, w.changed].filter(Boolean).join(' / '))), wrow('Remarks', esc(w.remarks || '')),
+      wrow('Our devices', R.devices ? `${R.devices} device(s) talked to it, ${fmtBytes(R.bytes)} in total, last ${esc(R.lastDay)}` : 'none recorded'),
+      wrow('Router log', log.n ? `${log.n} log line(s), last ${esc(log.last)}` + log.days.map((d) => `<div class="ipx">${esc(d.day)} x${d.n} [${esc(d.topics)}] ${esc(d.sample)}</div>`).join('') : 'not in the router log'),
+      wrow('Router trap lists', R.lists.length ? R.lists.map((l) => `<span class="chip high">${esc(l)}</span>`).join(' ') : ''),
+      wrow('Lookup problem', esc(w.error || '')),
+    ].join('') + '</table><div style="margin-top:8px">' + ipBtn(ip, w.org || '').replace(/<button[^>]*data-act="whois"[\s\S]*?<\/button>\s*/, '') + '</div>';
+  } catch (e) { $('#w-body').innerHTML = '<div class="empty">Could not look this address up (' + esc(String(e.message || e)) + '). Only public IPv4 addresses have a whois record.</div>'; }
+}
+$('#w-close').addEventListener('click', () => { $('#wmodal').hidden = true; });
+$('#wmodal').addEventListener('mousedown', (e) => { if (e.target === $('#wmodal')) $('#wmodal').hidden = true; });
+$('#w-refresh').addEventListener('click', () => openWhois(WH.ip, true));
+$('#w-raw').addEventListener('click', async () => {
+  const pre = $('#w-pre'); if (!pre.hidden) { pre.hidden = true; $('#w-raw').textContent = 'Show raw whois'; return; }
+  pre.hidden = false; pre.textContent = 'Asking the registry...'; $('#w-raw').textContent = 'Hide raw whois';
+  try { const R = await j(`${P()}/whois/raw?ip=${encodeURIComponent(WH.ip)}`); WH.raw = R.text || ''; pre.textContent = R.error ? 'Raw whois failed: ' + R.error + ' (port 43 may be blocked; the table above uses RDAP over https)' : '# ' + R.server + '\n' + R.text; } catch (e) { pre.textContent = 'Raw whois failed'; }
+});
+$('#w-copy').addEventListener('click', async () => {
+  const text = $('#w-ip').textContent + '\n' + [...$$('#w-body tr')].map((tr) => tr.innerText.replace(/\s*\t\s*/g, ': ').trim()).join('\n') + ($('#w-pre').hidden ? '' : '\n\n' + $('#w-pre').textContent);
+  try { await navigator.clipboard.writeText(text); $('#w-msg').textContent = 'Copied'; } catch { $('#w-msg').textContent = 'Copy failed'; }
+});
+
+// ================= concurrent connections =================
+const CC = { range: 'live' };
+const chConc = new Chart($('#ch-conc'), {
+  kind: 'area', yfmt: (v) => String(Math.round(v)),
+  xfmt: (t) => (CC.range === 'live' ? hm(t) + ':' + pad(new Date(t * 1000).getSeconds()) : CC.range === '7d' ? dmy(t).slice(5) + ' ' + pad(new Date(t * 1000).getHours()) + 'h' : hm(t)),
+  tipfmt: (p) => `<b>${CC.range === 'live' ? hms(p.t) : dmy(p.t) + ' ' + hm(p.t)}</b><br><span class="dn">${p.d} connections</span> &nbsp; <span class="upc">${p.u} to the internet</span>`,
+});
+async function renderConc() {
+  const R = await j(`${P()}/concurrency?range=${CC.range === 'live' ? '1h' : CC.range}`);
+  const rows = CC.range === 'live' ? R.live : R.history;
+  chConc.set(rows.map((r) => ({ t: r[0], d: r[1], u: r[2] })));
+  $('#cdtbl tbody').innerHTML = R.devices.map((d) => `<tr data-ip="${d.ip}"><td class="l"><span class="nm">${esc(d.name || '(unnamed)')}</span> <span class="ipx">${d.ip}</span></td><td class="l ipx">${esc(d.vlan)}</td><td>${d.conns}</td><td><b>${d.iconn}</b></td><td>${d.remotes}</td><td class="idle">${d.peakConns}</td><td class="idle">${d.peakHosts}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">No data yet.</td></tr>';
+}
+$('#crange').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#crange button').forEach((x) => x.classList.toggle('on', x === b)); CC.range = b.dataset.v; renderConc(); });
+$('#cdtbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-ip]'); if (tr) openDetail(tr.dataset.ip); });
+
+// device panel: who it talks to
+const DD = { period: 'today' };
+async function refreshDetailDest() {
+  const ip = S.sel; if (!ip) return;
+  try {
+    const R = await j(`${P()}/dest?period=${DD.period}&ip=${ip}`); if (S.sel !== ip) return;
+    typeBars($('#dd-types'), R.types.map((t) => ({ type: t.type, v: t.up + t.down, sub: fmtBytes(t.down + t.up) })));
+    $('#ddtbl tbody').innerHTML = R.remotes.slice(0, 12).map((r) => `<tr><td class="l">${remoteName(r)}${r.org ? ' <span class="ipx">' + esc(r.org) + '</span>' : ''}</td><td class="l">${typeChip(r.type)}</td><td class="dn">${fmtBytes(r.down)}</td><td class="upc">${fmtBytes(r.up)}</td><td>${ipBtn(r.ip, r.name)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">No destinations recorded for this period yet.</td></tr>';
+  } catch (e) { /* ignore */ }
+}
+$('#ddper').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#ddper button').forEach((x) => x.classList.toggle('on', x === b)); DD.period = b.dataset.v; refreshDetailDest(); });
+{ const o = openDetail; openDetail = async function (ip) { await o(ip); refreshDetailDest(); }; }
+
+// ================= abuse =================
+const AB = { group: 'staff', period: 'today' };
+async function renderAbuse() {
+  const R = await j(`${P()}/abuse?group=${AB.group}&period=${AB.period}`);
+  const A = R.config, win = AB.group === 'staff';
+  $('#a-info').textContent = win ? (A.hours.mode === '24x7' ? __('Staff devices, internet traffic around the clock, 24/7 ({from} to {to}).', { from: R.from, to: R.to }) : __('Staff devices, internet traffic during working hours {hours} ({from} to {to}).', { hours: HoursEditor.summary(A.hours), from: R.from, to: R.to })) : __('Guest devices, internet traffic all day ({from} to {to}).', { from: R.from, to: R.to });
+  $('#a-offh').hidden = !win; $$('#atbl tbody').forEach(() => {});
+  const flagged = R.rows.filter((r) => r.reasons.length), show = $('#aall').checked ? R.rows : flagged;
+  $('#a-n').textContent = R.rows.length; $('#a-f').textContent = flagged.length;
+  $('#a-t').textContent = fmtBytes(R.rows.reduce((s, r) => s + r.total, 0)); $('#a-m').textContent = fmtBytes(R.median);
+  const w = $('#a-warn'); w.hidden = R.blockRule; w.textContent = R.blockRule ? '' : 'Blocking is not enabled on the router yet: open the Router setup tab and apply the "block" rules once. Until then the Block buttons will say so.';
+  $('#atbl tbody').innerHTML = show.map((r) => `<tr data-ip="${r.ip}"><td class="l"><span class="nm">${esc(r.name || '(unnamed)')}</span> <span class="ipx">${r.ip}</span>${r.blocked ? ' <span class="chip blocked">NO INTERNET</span>' : ''}</td><td class="l ipx">${esc(r.vlan)}</td>
+    <td><b>${fmtBytes(r.total)}</b></td><td class="dn">${fmtBytes(r.down)}</td><td class="upc">${fmtBytes(r.up)}</td><td>${r.busy}</td><td>${r.peakMbps.toFixed(1)}</td><td>${r.peakConns}</td>${win ? `<td class="idle">${fmtBytes(r.offHours)}</td>` : ''}
+    <td class="l wrapc">${r.reasons.map((x) => `<span class="chip medium">${esc(x)}</span>`).join('') || '<span class="ipx">within limits</span>'}</td><td>${blockBtn(r.ip, r.name, r.blocked)}</td></tr>`).join('')
+    || `<tr><td colspan="11" class="empty">${flagged.length ? '' : 'Nobody is over the limits for this period. '}Tick "show all devices" to see everyone.</td></tr>`;
+}
+$('#atbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr[data-ip]'); if (tr) openDetail(tr.dataset.ip); });
+$('#agroup').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#agroup button').forEach((x) => x.classList.toggle('on', x === b)); AB.group = b.dataset.v; renderAbuse(); });
+$('#aperiod').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#aperiod button').forEach((x) => x.classList.toggle('on', x === b)); AB.period = b.dataset.v; renderAbuse(); });
+$('#aall').addEventListener('change', renderAbuse);
+$('#a-settings').addEventListener('click', async () => {
+  const C = await j(P() + '/config'), A = C.abuse;
+  for (const k of ['busyMB', 'busyMinWarn', 'staffDayGB', 'guestDayGB', 'uploadGB', 'peerMult', 'minPeerMB', 'connWarn']) $('#af-' + k).value = A[k];
+  HoursEditor.render($('#af-hours'), A.hours);
+  $('#af-msg').textContent = ''; $('#amodal').hidden = false;
+});
+$('#am-close').addEventListener('click', () => { $('#amodal').hidden = true; });
+$('#af-save').addEventListener('click', async () => {
+  const a = { hours: HoursEditor.read($('#af-hours')) };
+  for (const k of ['busyMB', 'busyMinWarn', 'staffDayGB', 'guestDayGB', 'uploadGB', 'peerMult', 'minPeerMB', 'connWarn']) a[k] = $('#af-' + k).value;
+  const x = await postJson(P() + '/config', { abuse: a });
+  $('#af-msg').style.color = x.ok ? 'var(--ok)' : 'var(--bad)'; $('#af-msg').textContent = x.ok ? 'Saved.' : (x.error || 'Check the values');
+  if (x.ok) { $('#amodal').hidden = true; renderAbuse(); }
+});
+
+// ================= security =================
+const SEC = { list: 'port scanners' };
+const KIND = { scan: 'Port / host scan', 'lan-scan': 'Scanning the local network', 'lan-sweep': 'Contacting many internal hosts', 'brute-force': 'Brute-force / flood pattern', 'many-connections': 'Very many connections', 'router-probe': 'Probing router management', 'router-login-fail': 'Failed router logins' };
+const ago = (t) => { const s = Math.max(0, Math.floor(Date.now() / 1000) - t); return s < 90 ? s + ' s ago' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : Math.round(s / 86400) + ' d ago'; };
+const SG = { open: new Set(), ev: [] };
+const SEVRANK = { high: 3, medium: 2, low: 1 };
+// all events of one device combined: how many, which kinds (and how many times each), worst severity, last seen
+function drawSecGroups() {
+  const groups = new Map();
+  for (const e of SG.ev) {
+    let g = groups.get(e.ip); if (!g) groups.set(e.ip, g = { ip: e.ip, dev: e.dev, events: [], kinds: new Map(), rank: 0, sev: 'low', last: 0, first: Infinity, unack: 0 });
+    g.events.push(e); g.kinds.set(e.kind, (g.kinds.get(e.kind) || 0) + 1);
+    if ((SEVRANK[e.sev] || 0) > g.rank) { g.rank = SEVRANK[e.sev] || 0; g.sev = e.sev; }
+    g.last = Math.max(g.last, e.last); g.first = Math.min(g.first, e.ts); if (!e.ack) g.unack++;
+  }
+  const rows = [...groups.values()].sort((a, b) => (b.unack > 0) - (a.unack > 0) || b.rank - a.rank || b.events.length - a.events.length || b.last - a.last);
+  $('#s-ev2').textContent = rows.length + ' device' + (rows.length === 1 ? '' : 's');
+  $('#setbl tbody').innerHTML = rows.map((g) => {
+    const open = SG.open.has(g.ip), kinds = [...g.kinds.entries()].sort((a, b) => b[1] - a[1]);
+    let h = `<tr class="sgrp${open ? ' open' : ''}${g.unack ? '' : ' idle'}" data-sg="${g.ip}">
+      <td class="l"><span class="car">&#9656;</span><a href="#" data-act="open" data-ip="${g.ip}"><span class="nm">${esc(g.dev.name || '(unnamed)')}</span></a> <span class="ipx">${g.ip}<br>${esc(g.dev.vlan || '')}</span></td>
+      <td title="${g.events.length} events, ${g.unack} not acknowledged"><b>${g.events.length}</b>${g.unack && g.unack !== g.events.length ? `<div class="ipx">${g.unack} new</div>` : ''}</td>
+      <td class="l wrapc">${kinds.map(([k, n]) => `<span class="chip">${esc(KIND[k] || k)} &times; ${n}</span>`).join(' ')}</td>
+      <td class="l"><span class="chip ${g.sev}">${g.sev}</span></td>
+      <td class="l" title="first seen ${new Date(g.first * 1000).toLocaleString()}">${ago(g.last)}<div class="ipx">since ${ago(g.first)}</div></td>
+      <td>${blockBtn(g.ip, g.dev.name, false)} <button class="mini" data-act="ignore" data-ip="${g.ip}" data-name="${esc(g.dev.name || '')}">Ignore</button> ${g.unack ? `<button class="mini" data-act="ackdev" data-ip="${g.ip}">Ack all</button>` : ''}</td></tr>`;
+    if (open) h += `<tr class="sgdet"><td colspan="6"><table><thead><tr><th class="l">When</th><th class="l">Severity</th><th class="l">What</th><th class="l">Details</th><th></th></tr></thead><tbody>${[...g.events].sort((a, b) => b.last - a.last).map((e) => `<tr class="${e.ack ? 'idle' : ''}" style="cursor:default"><td class="l" title="first seen ${new Date(e.ts * 1000).toLocaleString()}">${ago(e.last)}${e.last > e.ts ? ` <span class="ipx">for ${Math.max(1, Math.round((e.last - e.ts) / 60))} min</span>` : ''}</td><td class="l"><span class="chip ${e.sev}">${e.sev}</span></td><td class="l"><b>${esc(KIND[e.kind] || e.kind)}</b></td><td class="l wrapc">${esc(e.detail)}</td><td>${e.ack ? '' : `<button class="mini" data-act="ack" data-id="${e.id}">Ack</button>`}</td></tr>`).join('')}</tbody></table></td></tr>`;
+    return h;
+  }).join('') || '<tr><td colspan="6" class="empty">No suspicious behaviour detected from inside the network in this period.</td></tr>';
+}
+$('#setbl tbody').addEventListener('click', (e) => { const tr = e.target.closest('tr.sgrp'); if (!tr || e.target.closest('a,button')) return; const ip = tr.dataset.sg; if (SG.open.has(ip)) SG.open.delete(ip); else SG.open.add(ip); drawSecGroups(); });
+async function renderSec() {
+  const R = await j(`${P()}/security?days=${$('#sdays').value}`);
+  const showAck = $('#sack').checked, ev = R.events.filter((e) => showAck || !e.ack);
+  $('#s-high').textContent = R.events.filter((e) => !e.ack && e.sev === 'high' && e.last > Date.now() / 1000 - 86400).length;
+  $('#s-ev').textContent = ev.length; SG.ev = ev; drawSecGroups();
+  const lists = R.router.lists, ext = (lists['port scanners'] || []).length + (lists.ssh_blacklist || []).length + (lists.telnet_blacklist || []).length;
+  $('#s-ext').textContent = ext; $('#s-ext2').textContent = `${(lists['port scanners'] || []).length} scanners, ${(lists.ssh_blacklist || []).length} SSH, ${(lists.telnet_blacklist || []).length} telnet`;
+  $('#s-int').textContent = R.router.log.filter((l) => l.internal).length;
+  const rl = (lists[SEC.list] || []);
+  $('#rltbl tbody').innerHTML = rl.slice(0, 100).map((r) => `<tr><td class="l">${esc(r.address)}</td><td class="l ipx">${esc(r.timeout)}</td><td>${ipBtn(r.address, '')}</td></tr>`).join('') || '<tr><td colspan="3" class="empty">Empty.</td></tr>';
+  $('#lgtbl tbody').innerHTML = R.router.log.slice(0, 60).map((l) => `<tr><td class="l">${esc(l.ip)} ${l.internal ? '<span class="chip high">inside</span>' : ''}</td><td class="l ipx">${esc(l.kind)}${l.via.length ? ' (' + esc(l.via.join('/')) + ')' : ''}${l.users.length ? ' as ' + esc(l.users.join(', ')) : ''}</td><td>${l.n}</td><td class="l ipx">${esc(l.last)}</td><td>${l.internal ? '' : ipBtn(l.ip, '')}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nothing in the router log.</td></tr>';
+  $('#s-ign').innerHTML = 'Ignored for scan alerts: ' + (R.ignore.map((ip) => `${ip} <a href="#" data-act="unignore" data-ip="${ip}">(stop ignoring)</a>`).join(' &middot; ') || 'none') + '<br>Never flagged as probing the router (admin PCs): ' + R.adminIps.join(', ');
+}
+$('#sdays').addEventListener('change', renderSec); $('#sack').addEventListener('change', renderSec);
+$('#sec-ackall').addEventListener('click', async () => { await postJson(P() + '/secack', { all: true }); renderSec(); loadRouters(true); });
+$('#rlist').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#rlist button').forEach((x) => x.classList.toggle('on', x === b)); SEC.list = b.dataset.v; renderSec(); });
+
+// ================= blocked list =================
+const IPB = { set: new Set() };
+function ipBtn(addr, name) {
+  return `<button class="mini" data-act="whois" data-ip="${esc(addr)}" title="Whois / owner of this internet address">Whois</button> ` + (IPB.set.has(addr) ? `<button class="mini" data-act="ipunblock" data-ip="${esc(addr)}" title="This address is blocked: click to unblock">Unblock</button>`
+    : `<button class="mini" data-act="ipblock" data-ip="${esc(addr)}" data-name="${esc(name || '')}" title="Block this internet address (attacker / knocker)">Block</button>`);
+}
+async function loadIpBlocked() { try { const R = await j(P() + '/ipblocked'); IPB.set = new Set(R.ips.map((x) => x.addr)); return R; } catch (e) { return { rule: false, ips: [], dropped: 0 }; } }
+async function renderBlocked() {
+  const R = await j(P() + '/blocked'); IPB.set = new Set(R.ips.map((x) => x.addr));
+  const wi = $('#bi-warn'); wi.hidden = R.ipRuleOk; wi.textContent = R.ipRuleOk ? '' : 'Blocking internet addresses is not enabled on the router yet. Open the Router setup tab and apply the "block internet addresses" rules once (a config export is taken first).';
+  $('#bi-count').textContent = R.ips.length + ' blocked' + (R.ipRuleOk ? ', ' + (R.ipDropped || 0).toLocaleString() + ' packets dropped so far' : '');
+  $('#bitbl tbody').innerHTML = R.ips.map((x) => `<tr data-k="${esc(x.addr)}"><td class="l"><b>${esc(x.addr)}</b>${x.name ? ' <span class="ipx">' + esc(x.name) + '</span>' : ''}</td><td class="l ipx">${esc(x.comment)}</td><td class="l">${x.timeout ? esc(x.timeout) : 'until you unblock'}</td><td><button class="mini" data-act="ipunblock" data-ip="${esc(x.addr)}">Unblock</button></td></tr>`).join('') || '<tr><td colspan="4" class="empty">No internet address is blocked.</td></tr>';
+  const w = $('#b-warn'); w.hidden = R.ruleOk; w.textContent = R.ruleOk ? '' : 'The block rule is not on the router yet, so nobody can be blocked. Open the Router setup tab and apply the "block devices" rules once (a config export is taken first).';
+  $('#b-count').textContent = R.items.length + ' blocked';
+  $('#btbl tbody').innerHTML = R.items.map((d) => `<tr data-ip="${d.ip}"><td class="l"><span class="nm">${esc(d.name || '(unnamed)')}</span> <span class="ipx">${d.ip}</span></td><td class="l ipx">${esc(d.vlan)}</td><td class="l ipx">${esc(d.comment)}</td><td class="l">${d.timeout ? esc(d.timeout) : 'until you unblock'}</td><td>${blockBtn(d.ip, d.name, true)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">Nobody is blocked.</td></tr>';
+}
+
+$('#bi-go').addEventListener('click', async () => {
+  const addr = $('#bi-addr').value.trim(); if (!addr) { toast('Enter an address first', 'bad'); return; }
+  $('#bi-msg').textContent = 'Blocking...';
+  const x = await postJson(P() + '/ipblock', { addr, minutes: Number($('#bi-dur').value), note: $('#bi-note').value });
+  $('#bi-msg').textContent = ''; if (!x.ok) { toast(x.error, 'bad'); return; }
+  toast(x.already ? addr + ' is already blocked' : 'Address ' + addr + ' blocked', 'ok'); $('#bi-addr').value = ''; $('#bi-note').value = ''; renderBlocked();
+});
+
+// ================= online / offline =================
+const dur = (s) => { s = Math.max(0, Math.floor(s)); if (s < 90) return s + ' s'; if (s < 5400) return Math.round(s / 60) + ' min'; if (s < 172800) return (s / 3600).toFixed(s < 36000 ? 1 : 0) + ' h'; return Math.round(s / 86400) + ' days'; };
+const when = (t) => (t ? new Date(t * 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-');
+let PR = { rows: [], now: 0 };
+async function renderPrivacy() {
+  const [V, M] = await Promise.all([j(P() + '/vpn?days=' + $('#vp-days').value), j(P() + '/macs')]);
+  $('#vp-bytes').textContent = fmtBytes(V.vpnBytes); $('#vp-share').textContent = (V.share * 100).toFixed(1) + '% of all internet traffic, last ' + V.days + ' day(s)';
+  $('#vp-dev').textContent = V.devices.length; $('#vp-live').textContent = V.live.length ? V.live.length + ' using one right now' : 'none right now';
+  $('#vp-count').textContent = V.kinds.map((k) => k.kind + ' ' + fmtBytes(k.bytes)).join(', ');
+  $('#vptbl tbody').innerHTML = V.devices.map((d) => `<tr data-ip="${d.ip}"><td class="l"><span class="nm">${esc(d.name || '(unnamed)')}</span> <span class="ipx">${d.ip}</span>${d.adUser ? ' <span class="ipx">AD: ' + esc(d.adUser) + '</span>' : ''}${d.live ? ' <span class="chip medium">now</span>' : ''}</td><td class="l ipx">${esc(d.vlan)}</td><td class="l">${d.kinds.map((k) => '<span class="chip ' + (d.possible ? '' : 'medium') + '">' + esc(k) + '</span>').join(' ')}${d.note ? '<div class="ipx">' + esc(d.note) + '</div>' : ''}</td><td>${fmtBytes(d.vpnBytes)}</td><td>${(d.share * 100).toFixed(0)}%</td><td class="l ipx">${d.remotes.map(esc).join(', ')}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No VPN or tunnel traffic seen in this period.</td></tr>';
+  $('#mp-laa').textContent = M.laaTotal; $('#mp-laa2').textContent = M.laaOnline + ' online now, of ' + M.total + ' MACs in 30 days';
+  $('#mp-chg').textContent = M.changed.length; $('#mp-since').textContent = M.since ? 'tracking since ' + dmy(M.since) : '';
+  $('#mc-count').textContent = M.changed.length + ' found';
+  $('#mctbl tbody').innerHTML = M.changed.map((c) => `<tr><td class="l"><b>${esc(c.host)}</b>${c.sameIp ? ' <span class="ipx">same IP</span>' : ''}</td><td>${c.count}</td><td class="l ipx">${c.macs.map((m) => esc(m.mac) + (m.laa ? '*' : '') + ' (' + dmy(m.first) + ')').join(' &#8594; ')}</td><td class="l">${when(c.macs[c.macs.length - 1].last)}</td></tr>`).join('') || '<tr><td colspan="4" class="empty">No device has changed its MAC yet. This builds up over days.</td></tr>';
+  $('#ml-count').textContent = M.laa.length + ' in the last 30 days';
+  $('#mltbl tbody').innerHTML = M.laa.slice(0, 300).map((x) => `<tr data-ip="${x.ip}"><td class="l ipx">${esc(x.mac)}${x.online ? ' <span class="chip medium">online</span>' : ''}</td><td class="l ipx">${esc(x.ip)}</td><td class="l">${esc(x.name || x.host || '')}</td><td class="l">${when(x.first)}</td><td class="l">${when(x.last)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">None.</td></tr>';
+}
+$('#vp-days').addEventListener('change', () => renderPrivacy());
+async function renderPres() {
+  PR = await j(P() + '/presence');
+  const tracked = PR.rows.filter((r) => r.group !== 'Guest');
+  const w = tracked.filter((r) => r.watch);
+  $('#p-on').textContent = tracked.filter((r) => r.state === 'online').length; $('#p-on2').textContent = 'of ' + tracked.length + ' known devices (guests excluded)';
+  const woff = w.filter((r) => r.state === 'offline');
+  $('#p-off').textContent = woff.length; $('#p-off2').textContent = 'of ' + w.length + ' watched devices';
+  $('#p-24').textContent = woff.filter((r) => r.first && PR.now - r.since < 86400).length;
+  $('#p-unk').textContent = tracked.filter((r) => r.state === 'unknown').length;
+  const gs = [...new Set(PR.rows.map((r) => r.group))].sort(), sel = $('#pgroup');
+  if ($$('option', sel).length !== gs.length + 1) { const cur = sel.value; sel.innerHTML = '<option value="">All groups</option>' + gs.map((g) => `<option>${esc(g)}</option>`).join(''); sel.value = cur; }
+  const q = $('#pq').value.toLowerCase(), gf = sel.value, sf = $('#pstate').value, wo = $('#pwatch').checked;
+  const list = PR.rows.filter((r) => (!gf || r.group === gf) && (!sf || r.state === sf) && (!wo || r.watch) && (!q || (r.name + ' ' + r.ip + ' ' + r.mac + ' ' + r.vlan).toLowerCase().includes(q)))
+    .sort((a, b) => (a.state === b.state ? (b.since - a.since) : (a.state === 'offline' ? -1 : b.state === 'offline' ? 1 : 0)));
+  $('#pcount').textContent = list.length + ' devices';
+  const chipS = (r) => r.state === 'online' ? '<span class="chip" style="border-left:4px solid var(--ok)">online</span>' : r.state === 'offline' ? '<span class="chip blocked">offline</span>' : '<span class="chip">not verified</span>';
+  $('#ptbl tbody').innerHTML = list.slice(0, 600).map((r) => `<tr data-pip="${r.ip}"><td class="l"><span class="nm">${esc(r.name || '(unnamed)')}</span> <span class="ipx">${r.ip}</span></td><td class="l ipx">${esc(r.group)}</td><td class="l ipx">${esc(r.vlan)}</td>
+    <td class="l">${chipS(r)}</td><td class="l ipx">${r.state === 'online' ? 'now' : r.first ? when(r.last) : 'never seen'}</td>
+    <td class="l">${r.state === 'offline' ? (r.first ? '<b>' + dur(PR.now - r.last) + '</b>' : '<span class="ipx">since monitoring began</span>') : ''}</td>
+    <td>${r.outages7 || ''}</td><td>${r.uptime7 == null ? '<span class="idle">-</span>' : r.uptime7.toFixed(r.uptime7 >= 99.95 ? 0 : 1) + '%'}</td>
+    <td><input type="checkbox" data-act="watch" data-ip="${r.ip}" ${r.watch ? 'checked' : ''}></td></tr>`).join('') || '<tr><td colspan="9" class="empty">No devices match. Change the filters above.</td></tr>';
+}
+async function togglePresHistory(tr) {
+  const nx = tr.nextElementSibling; if (nx && nx.classList.contains('subrow')) { nx.remove(); return; }
+  const ev = await j(`${P()}/presence/history?ip=${tr.dataset.pip}`);
+  const row = document.createElement('tr'); row.className = 'subrow';
+  row.innerHTML = '<td colspan="9"><b>Outage history</b>: ' + (ev.length ? ev.slice(0, 30).map((e) => e.kind === 'down' ? `<span class="chip blocked">went offline ${when(e.ts)}</span>` : `<span class="chip" style="border-left:4px solid var(--ok)">back ${when(e.ts)} after ${dur(e.gap)}</span>`).join(' ') : 'no outages recorded yet') + '</td>';
+  tr.after(row);
+}
+$('#ptbl tbody').addEventListener('click', (e) => { if (e.target.closest('input')) return; const tr = e.target.closest('tr[data-pip]'); if (tr) togglePresHistory(tr); });
+$('#ptbl tbody').addEventListener('change', async (e) => { const c = e.target.closest('input[data-act="watch"]'); if (!c) return; await postJson(P() + '/watch', { ips: [c.dataset.ip], watch: c.checked }); renderPres(); refreshBadges(); });
+for (const id of ['#pgroup', '#pstate', '#pwatch']) $(id).addEventListener('change', renderPres);
+$('#pq').addEventListener('input', renderPres);
+
+// ================= speed limit of one device =================
+function limitBtn(ip, name, limit) {
+  return limit ? `<button class="mini" data-act="unlimit" data-ip="${ip}" data-name="${esc(name || '')}" title="${esc(limit.down)} down / ${esc(limit.up)} up">Unlimit</button>`
+    : `<button class="mini" data-act="limit" data-ip="${ip}" data-name="${esc(name || '')}" title="Limit this device's internet speed">Limit</button>`;
+}
+let LM = { ip: '', name: '' };
+async function openLimit(ip, name) {
+  LM = { ip, name }; $('#l-title').textContent = 'Limit speed of ' + (name || ip); $('#l-sub').textContent = ip; $('#l-msg').textContent = '';
+  try { const R = await j(P() + '/qos'); $('#l-prof').innerHTML = Object.entries(R.config.profiles).map(([id, p]) => `<option value="${esc(id)}">${esc(p.name)} (${esc(p.down)} / ${esc(p.up)})</option>`).join(''); const th = R.config.profiles.throttled ? 'throttled' : ''; if (th) $('#l-prof').value = th;
+    if (!R.applied || !R.config.enabled) { $('#l-msg').style.color = 'var(--bad)'; $('#l-msg').textContent = R.applied ? 'Master switch is OFF: enable it in Configuration first.' : 'Bandwidth control is not on the router yet: Configuration > Bandwidth control.'; } } catch (e) { /* ignore */ }
+  $('#l-cust').checked = false; $('#l-down').disabled = $('#l-up').disabled = true; $('#lmodal').hidden = false;
+}
+$('#l-close').addEventListener('click', () => { $('#lmodal').hidden = true; }); $('#l-cancel').addEventListener('click', () => { $('#lmodal').hidden = true; });
+$('#l-cust').addEventListener('change', (e) => { $('#l-down').disabled = $('#l-up').disabled = !e.target.checked; $('#l-prof').disabled = e.target.checked; });
+$('#l-go').addEventListener('click', async () => {
+  let m = $('#l-dur').value; if (m === 'eod') { const e = new Date(); e.setHours(23, 59, 0, 0); m = Math.max(1, Math.ceil((e - Date.now()) / 60000)); }
+  const body = { ip: LM.ip, minutes: Number(m), note: LM.name }; if ($('#l-cust').checked) body.custom = { down: $('#l-down').value, up: $('#l-up').value }; else body.profile = $('#l-prof').value;
+  $('#l-msg').style.color = 'var(--mute)'; $('#l-msg').textContent = 'Applying...';
+  const x = await postJson(P() + '/qos/device', body);
+  if (!x.ok) { $('#l-msg').style.color = 'var(--bad)'; $('#l-msg').textContent = x.error; return; }
+  $('#lmodal').hidden = true; await afterBlockChange();
+});
+
+// ================= configuration page (per router) =================
+let QS = { cfg: null, rep: null };
+const csv = (a) => (a || []).join(', '), unCsv = (s) => String(s || '').split(',').map((x) => x.trim()).filter(Boolean);
+function profSel(cur, cls, attrs) { return `<select class="${cls}" ${attrs || ''}>${Object.entries(QS.cfg.profiles).map(([id, p]) => `<option value="${esc(id)}" ${id === cur ? 'selected' : ''}>${esc(p.name)} (${esc(p.down)}/${esc(p.up)})</option>`).join('')}</select>`; }
+async function renderConfig() {
+  const r = S.routers.find((x) => x.id === S.router) || {};
+  $('#cf-name').textContent = r.name || ''; $('#cf-host').textContent = r.host ? `${r.host}:${r.port}` : '';
+  const [C, R] = await Promise.all([j(P() + '/config'), j(P() + '/qos')]);
+  QS.cfg = R.config; QS.rep = R;
+  $('#cg-staff').value = csv(C.staffNetworks); $('#cg-guest').value = csv(C.guestNetworks); $('#cg-admin').value = csv(C.sec.adminIps); $('#cg-ignore').value = csv(C.sec.ignore);
+  const c = R.config;
+  $('#q-chips').innerHTML = `<span class="chip ${R.applied ? '' : 'blocked'}">${R.applied ? 'queues on router' : 'not on router yet'}</span> <span class="chip ${c.enabled ? 'medium' : ''}">${c.enabled ? 'ENFORCING' : 'master switch off'}</span>`;
+  $('#q-wan').textContent = R.wan ? `"${R.wan}"` : '(not found)';
+  const w = $('#q-warn'); w.hidden = !R.fastTrack; w.textContent = R.fastTrack ? 'A FastTrack rule is enabled on this router: fast-tracked traffic bypasses queues. Disable FastTrack before enforcing limits.' : '';
+  $('#q-master').checked = c.enabled; $('#q-wanin').value = c.wan;
+  $('#qp-tbl tbody').innerHTML = Object.entries(c.profiles).map(([id, p]) => qpRow(id, p, true)).join('');
+  $('#qg-tbl tbody').innerHTML = c.groups.map((g) => `<tr data-gid="${esc(g.id)}"><td class="l"><b>${esc(g.name)}</b> <span class="ipx">${esc(g.id)}</span></td><td class="l"><input class="g-t" value="${esc(csv(g.targets))}" style="width:100%"></td><td class="l">${profSel(g.profile, 'g-p')}</td><td><input type="checkbox" class="g-e" ${g.enabled ? 'checked' : ''}></td></tr>`).join('');
+  $('#qu-tbl tbody').innerHTML = Object.entries(c.users).map(([n, u]) => quRow(n, u)).join('');
+  $('#qa-on').checked = c.auto.enabled; $('#qa-mbps').value = c.auto.downMbps; $('#qa-min').value = c.auto.minutes; $('#qa-for').value = c.auto.forMinutes;
+  $('#qa-prof').innerHTML = Object.entries(c.profiles).map(([id, p]) => `<option value="${esc(id)}" ${id === c.auto.profile ? 'selected' : ''}>${esc(p.name)}</option>`).join('');
+  $('#qa-groups').innerHTML = ['Guest', 'Staff', 'Other'].map((g) => `<label style="margin-right:8px"><input type="checkbox" value="${g}" ${c.auto.groups.includes(g) ? 'checked' : ''}> ${g}</label>`).join('');
+  const Qc = c.quota;
+  $('#qq-on').checked = Qc.enabled; $('#qq-days').value = String(Qc.days); $('#qq-down').value = Qc.downGB; $('#qq-up').value = Qc.upGB; $('#qq-tot').value = Qc.totalGB; $('#qq-for').value = Qc.forMinutes; $('#qq-ex').value = csv(Qc.exempt);
+  if (![...$('#qq-days').options].some((o) => o.value === String(Qc.days))) $('#qq-days').insertAdjacentHTML('beforeend', `<option value="${Qc.days}" selected>last ${Qc.days} days</option>`);
+  $('#qq-days').value = String(Qc.days);
+  $('#qq-prof').innerHTML = Object.entries(c.profiles).map(([id, p]) => `<option value="${esc(id)}" ${id === Qc.profile ? 'selected' : ''}>${esc(p.name)} (${esc(p.down)}/${esc(p.up)})</option>`).join('');
+  $('#qq-groups').innerHTML = ['Guest', 'Staff', 'Other'].map((g) => `<label style="margin-right:8px"><input type="checkbox" value="${g}" ${Qc.groups.includes(g) ? 'checked' : ''}> ${g}</label>`).join('');
+  $('#qqu-tbl tbody').innerHTML = (R.quota || []).map((r) => `<tr><td class="l">${esc(r.name || r.ip)} <span class="ipx">${r.ip}</span></td><td class="l ipx">${esc(r.group)}</td><td class="dn">${fmtBytes(r.down)}</td><td class="upc">${fmtBytes(r.up)}</td><td><b>${Math.round(r.pct * 100)}%</b></td><td class="l">${r.quotaLimited ? `<span class="chip quota">limited by quota${r.until ? ' until ' + esc(new Date(r.until * 1000).toLocaleString()) : ''}</span>` : r.limited ? '<span class="chip medium">has an individual limit</span>' : r.exempt ? '<span class="chip">exempt</span>' : r.pct >= 1 ? '<span class="chip high">over quota</span>' : ''}</td></tr>`).join('') || '<tr><td colspan="6" class="empty">No device in the selected groups has used 100 MB yet.</td></tr>';
+  $('#qd-tbl tbody').innerHTML = Object.entries(c.devices).map(([ip, d]) => { const q = R.queues.find((x) => x.name === 'mtc-dev-' + ip); return `<tr><td class="l">${esc(d.note || ip)} <span class="ipx">${ip}</span></td><td class="l">${d.custom ? esc(d.custom.down + ' / ' + d.custom.up) : esc((c.profiles[d.profile] || {}).name || d.profile)}</td><td class="l ipx">${esc(d.source)}</td><td class="l ipx">${d.until ? new Date(d.until * 1000).toLocaleString() : 'until removed'}</td><td class="ipx">${q ? esc(q.rate) : ''}</td><td><button class="mini" data-act="unlimit" data-ip="${ip}" data-name="${esc(d.note)}">Remove</button></td></tr>`; }).join('') || '<tr><td colspan="6" class="empty">No individual limits right now.</td></tr>';
+  $('#qq-tbl tbody').innerHTML = R.queues.map((q) => `<tr><td class="l">${esc(q.name)}</td><td class="l ipx">${esc(q.target)}</td><td class="l ipx">${esc(q.max)}</td><td class="l">${q.disabled ? '<span class="chip">disabled</span>' : '<span class="chip medium">active</span>'}</td><td class="ipx">${esc(q.rate)}</td></tr>`).join('') || '<tr><td colspan="5" class="empty">No [qos] queues on the router yet. Use "Preview changes" then Apply.</td></tr>';
+  $('#q-recent').innerHTML = R.recent.map((e) => `${new Date(e.ts * 1000).toLocaleString()} - <b>${esc(e.action)}</b> ${esc(e.name || e.ip)} ${esc(e.detail)}`).join('<br>') || 'none yet';
+}
+const qpRow = (id, p, existing) => `<tr><td class="l"><input class="p-id" value="${esc(id)}" ${existing ? 'readonly' : ''} style="width:130px"></td><td class="l"><input class="p-n" value="${esc(p.name)}" style="width:100%"></td><td><input class="p-d" value="${esc(p.down)}" style="width:80px"></td><td><input class="p-u" value="${esc(p.up)}" style="width:80px"></td><td><button class="mini" data-cf="delrow">x</button></td></tr>`;
+const quRow = (n, u) => `<tr><td class="l"><input class="u-n" value="${esc(n)}" style="width:150px"></td><td class="l"><input class="u-i" value="${esc(csv(u.ips))}" style="width:100%"></td><td class="l">${profSel(u.profile, 'u-p')}</td><td class="l"><input class="u-o" value="${esc(u.note || '')}"></td><td><button class="mini" data-cf="delrow">x</button></td></tr>`;
+$('#qp-add').addEventListener('click', () => { $('#qp-tbl tbody').insertAdjacentHTML('beforeend', qpRow('', { name: '', down: '5M', up: '2M' }, false)); });
+$('#qu-add').addEventListener('click', () => { $('#qu-tbl tbody').insertAdjacentHTML('beforeend', quRow('', { ips: [], profile: Object.keys(QS.cfg.profiles)[0], note: '' })); });
+$('#v-config').addEventListener('click', (e) => { const b = e.target.closest('[data-cf="delrow"]'); if (b) b.closest('tr').remove(); });
+function collectQos() {
+  const c = JSON.parse(JSON.stringify(QS.cfg));
+  c.enabled = $('#q-master').checked; c.wan = $('#q-wanin').value.trim();
+  c.profiles = {}; $$('#qp-tbl tbody tr').forEach((tr) => { const id = $('.p-id', tr).value.trim(); if (id) c.profiles[id] = { name: $('.p-n', tr).value, down: $('.p-d', tr).value, up: $('.p-u', tr).value }; });
+  c.groups = c.groups.map((g) => { const tr = $(`#qg-tbl tr[data-gid="${g.id}"]`); return Object.assign({}, g, { targets: unCsv($('.g-t', tr).value), profile: $('.g-p', tr).value, enabled: $('.g-e', tr).checked }); });
+  c.users = {}; $$('#qu-tbl tbody tr').forEach((tr) => { const n = $('.u-n', tr).value.trim(); if (n) c.users[n] = { ips: unCsv($('.u-i', tr).value), profile: $('.u-p', tr).value, note: $('.u-o', tr).value }; });
+  c.auto = { enabled: $('#qa-on').checked, downMbps: $('#qa-mbps').value, minutes: $('#qa-min').value, forMinutes: $('#qa-for').value, profile: $('#qa-prof').value, groups: $$('#qa-groups input:checked').map((x) => x.value) };
+  c.quota = { enabled: $('#qq-on').checked, days: $('#qq-days').value, downGB: $('#qq-down').value, upGB: $('#qq-up').value, totalGB: $('#qq-tot').value, profile: $('#qq-prof').value, forMinutes: $('#qq-for').value,
+    groups: $$('#qq-groups input:checked').map((x) => x.value), exempt: unCsv($('#qq-ex').value) };
+  return c;
+}
+function qMsg(t, bad) { const m = $('#q-msg'); m.style.color = bad ? 'var(--bad)' : 'var(--ok)'; m.textContent = t; }
+async function saveQos() { const x = await postJson(P() + '/qos/config', { config: collectQos() }); if (!x.ok) { qMsg(x.error, true); return false; } qMsg('Saved (not applied to the router yet).'); await renderConfig(); return true; }
+$('#q-save').addEventListener('click', saveQos);
+async function previewQos() {
+  if (!(await saveQos())) return;
+  const P2 = await j(P() + '/qos/plan'); $('#pm-msg').textContent = '';
+  if (P2.error) { $('#pm-sub').textContent = ''; $('#pm-ops').textContent = P2.error; $('#pm-apply').hidden = true; $('#pm-warn').hidden = true; $('#pmodal').hidden = false; return; }
+  $('#pm-sub').textContent = `Internet interface: ${P2.wan}`;
+  $('#pm-ops').textContent = P2.ops.length ? P2.ops.join('\n') : 'The router already matches this configuration. Nothing to change.';
+  const w = $('#pm-warn'); w.hidden = !P2.warnings.length; w.innerHTML = P2.warnings.map(esc).join('<br>');
+  $('#pm-apply').hidden = !P2.ops.length; $('#pm-apply').disabled = false; $('#pmodal').hidden = false;
+}
+$('#q-preview').addEventListener('click', previewQos);
+$('#pm-close').addEventListener('click', () => { $('#pmodal').hidden = true; }); $('#pm-cancel').addEventListener('click', () => { $('#pmodal').hidden = true; });
+$('#pm-apply').addEventListener('click', async () => {
+  $('#pm-apply').disabled = true; $('#pm-msg').style.color = 'var(--mute)'; $('#pm-msg').textContent = 'Saving a router backup and applying...';
+  const x = await postJson(P() + '/qos/apply', { confirm: true });
+  if (!x.ok) { $('#pm-msg').style.color = 'var(--bad)'; $('#pm-msg').textContent = x.error; $('#pm-apply').disabled = false; return; }
+  $('#pmodal').hidden = true; qMsg(`Applied ${x.ops} change(s) on the router.`); renderConfig();
+});
+$('#q-off').addEventListener('click', async () => { if (!(await uiConfirm('Disable all limits?', 'Everybody gets full speed again right now.\nYour configuration is kept.', { ok: 'Disable all limits', danger: true }))) return; const x = await postJson(P() + '/qos/off', {}); qMsg(x.ok ? 'All limits disabled.' : x.error, !x.ok); toast(x.ok ? 'All bandwidth limits disabled' : x.error, x.ok ? 'ok' : 'bad'); renderConfig(); });
+$('#q-remove').addEventListener('click', async () => { if (!(await uiConfirm('Remove from router?', 'Remove ALL bandwidth-control queues from the router?\nYour configuration on this page is kept.', { ok: 'Remove all', danger: true }))) return; const x = await postJson(P() + '/qos/remove', { confirm: true }); qMsg(x.ok ? 'Removed from the router.' : x.error, !x.ok); toast(x.ok ? 'Bandwidth control removed from the router' : x.error, x.ok ? 'ok' : 'bad'); renderConfig(); });
+$('#cg-save').addEventListener('click', async () => {
+  const x = await postJson(P() + '/config', { staffNetworks: unCsv($('#cg-staff').value), guestNetworks: unCsv($('#cg-guest').value), sec: { adminIps: unCsv($('#cg-admin').value), ignore: unCsv($('#cg-ignore').value) } });
+  $('#cg-msg').style.color = x.ok ? 'var(--ok)' : 'var(--bad)'; $('#cg-msg').textContent = x.ok ? 'Saved.' : x.error;
+});
+$('#cg-abuse').addEventListener('click', () => $('#a-settings').click());
+$('#cf-conn').addEventListener('click', () => { openManage(); const r = S.routers.find((x) => x.id === S.router); if (r) $(`#rtbl button[data-edit="${r.id}"]`) && $(`#rtbl button[data-edit="${r.id}"]`).click(); });
+
+// ================= audit history =================
+const AUD = { rows: [] };
+const AU_LABEL = { block: ['Blocked', 'blocked'], unblock: ['Unblocked', 'ok'], 'unblock-auto': ['Unblocked (timeout / router)', 'ok'], 'block-external': ['Blocked on the router', 'blocked'],
+  'hotspot-apply': ['Guest hotspot prepared', ''], 'hotspot-pages': ['Hotspot pages uploaded', ''], 'hotspot-enable': ['Guest hotspot ENABLED', 'blocked'], 'hotspot-disable': ['Guest hotspot disabled', 'ok'], 'hotspot-remove': ['Guest hotspot removed', ''], 'hotspot-account': ['Wi-Fi code issued', ''], 'hotspot-account-revoke': ['Wi-Fi code revoked', 'medium'], 'hotspot-account-expire': ['Wi-Fi code expired', ''], ipblock: ['Internet address blocked', 'blocked'], ipunblock: ['Internet address unblocked', 'ok'], 'ipblock-external': ['Address blocked on the router', 'blocked'], 'ipunblock-auto': ['Address unblocked (timeout / router)', 'ok'], 'qos-limit': ['Speed limited', 'medium'], 'qos-auto-limit': ['Auto-throttled', 'medium'], 'qos-quota-limit': ['Usage quota passed - limited', 'medium'], 'qos-unlimit': ['Limit removed', 'ok'], 'qos-apply': ['Bandwidth control applied', ''], 'qos-off': ['Limits disabled', ''], 'qos-remove': ['Bandwidth control removed', ''] };
+const auChip = (a) => { const l = AU_LABEL[a] || [a, '']; return l[1] === 'ok' ? `<span class="chip" style="border-left:4px solid var(--ok)">${esc(l[0])}</span>` : `<span class="chip ${l[1]}">${esc(l[0])}</span>`; };
+async function renderAudit() {
+  const per = $('#au-period').value, d = new Date(); let from = '1999-01-01';
+  if (per !== 'all') { d.setDate(d.getDate() - Number(per)); from = ymd(d); }
+  const R = await j(`${P()}/audit?from=${from}&to=${ymd(new Date())}`); AUD.rows = R.rows;
+  const kind = $('#au-kind').value, q = $('#au-q').value.toLowerCase();
+  const rows = R.rows.filter((r) => (!kind || (kind === 'qos' ? r.action.startsWith('qos-') : !r.action.startsWith('qos-'))) && (!q || (r.name + ' ' + r.ip + ' ' + r.detail + ' ' + r.mac + ' ' + r.actor).toLowerCase().includes(q)));
+  $('#au-now').textContent = R.blockedNow; $('#au-blk').textContent = R.rows.filter((r) => r.action === 'block' || r.action === 'block-external').length;
+  $('#au-lim').textContent = R.rows.filter((r) => r.action === 'qos-limit' || r.action === 'qos-auto-limit' || r.action === 'qos-quota-limit').length; $('#au-all').textContent = R.rows.length;
+  $('#au-count').textContent = rows.length + ' entries';
+  $('#autbl tbody').innerHTML = rows.slice(0, 600).map((r) => `<tr data-k="a${r.id}"><td class="l ipx">${when(r.ts)}</td><td class="l">${auChip(r.action)}</td>
+    <td class="l">${r.ip ? `<span class="nm">${esc(r.name || '(unnamed)')}</span> <span class="ipx">${r.ip}${r.mac ? ' ' + esc(r.mac) : ''}</span>` : '<span class="ipx">router</span>'}</td><td class="l ipx">${esc(r.grp || '')}</td>
+    <td class="l wrapc">${esc(r.detail)}</td><td class="l ipx">${esc(r.actor)}</td><td class="idle">${r.duration != null ? dur(r.duration) : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="empty">No audit entries in this period yet. Blocks, unblocks and speed limits are recorded here.</td></tr>';
+}
+$('#au-period').addEventListener('change', renderAudit); $('#au-kind').addEventListener('change', renderAudit); $('#au-q').addEventListener('input', renderAudit);
+$('#au-csv').addEventListener('click', () => {
+  const esc2 = (s) => '"' + String(s == null ? '' : s).replace(/"/g, '""') + '"';
+  const lines = ['time,action,ip,name,mac,group,details,by,duration_seconds'].concat(AUD.rows.map((r) => [new Date(r.ts * 1000).toISOString(), r.action, r.ip, esc2(r.name), r.mac, esc2(r.grp), esc2(r.detail), r.actor, r.duration == null ? '' : r.duration].join(',')));
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' })); a.download = 'audit-' + ymd(new Date()) + '.csv'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+});
+
+// ================= printable reports =================
+let RP = { lang: 'both' };
+$('#rp-lang').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; $$('#rp-lang button').forEach((x) => x.classList.toggle('on', x === b)); RP.lang = b.dataset.v; });
+const openReport = (qs) => window.open(`report.html?router=${encodeURIComponent(S.router)}&lang=${RP.lang}&${qs}`, '_blank');
+$('#v-reports').addEventListener('click', (e) => { const b = e.target.closest('[data-rp]'); if (b) openReport('period=' + b.dataset.rp); });
+$('#rp-go').addEventListener('click', () => { const f = $('#rp-from').value, t = $('#rp-to').value; if (!f || !t) { toast('Choose both dates', 'bad'); return; } openReport(`from=${f}&to=${t}`); });
+
+// ================= guest wifi hotspot =================
+let WF = { cfg: null, rep: null };
+const wMsg = (t, bad) => { const m = $('#w-msg'); m.style.color = bad ? 'var(--bad)' : 'var(--ok)'; m.textContent = t; };
+const lvl = { ok: ['&#10003;', 'var(--ok)'], warn: ['!', 'var(--up)'], bad: ['&#10007;', 'var(--bad)'], info: ['i', 'var(--accent)'] };
+function wRows(sel, rows, mk) { $(sel + ' tbody').innerHTML = rows.map(mk).join('') || ''; }
+const wpRow = (id, p, def, ex) => '<tr><td class="l"><input class="p-id" value="' + esc(id) + '" ' + (ex ? 'readonly' : '') + ' style="width:110px"></td><td class="l"><input class="p-n" value="' + esc(p.name) + '"></td><td><input class="p-d" value="' + esc(p.down) + '" style="width:70px"></td><td><input class="p-u" value="' + esc(p.up) + '" style="width:70px"></td><td><input class="p-v" value="' + esc(p.devices) + '" style="width:50px"></td><td><input type="radio" name="wdef" class="p-def" ' + (def ? 'checked' : '') + '></td><td><button class="mini" data-cf="delrow">x</button></td></tr>';
+const wwRow = (w) => '<tr><td class="l"><select class="w-k"><option value="ip" ' + (w.kind === 'ip' ? 'selected' : '') + '>address</option><option value="host" ' + (w.kind === 'host' ? 'selected' : '') + '>host name</option></select></td><td class="l"><input class="w-v" value="' + esc(w.value) + '" style="width:100%"></td><td class="l"><input class="w-p" value="' + esc(w.port) + '" style="width:80px"></td><td class="l"><input class="w-n" value="' + esc(w.note) + '" style="width:100%"></td><td><button class="mini" data-cf="delrow">x</button></td></tr>';
+const wbRow = (b) => '<tr><td class="l"><input class="b-m" value="' + esc(b.mac) + '" placeholder="AA:BB:CC:DD:EE:FF"></td><td class="l"><input class="b-i" value="' + esc(b.ip) + '"></td><td class="l"><input class="b-n" value="' + esc(b.note) + '" style="width:100%"></td><td><button class="mini" data-cf="delrow">x</button></td></tr>';
+async function renderWifi() {
+  const R = await j(P() + '/hotspot'); WF.rep = R; WF.cfg = R.config; const c = R.config;
+  const e = $('#w-err'); e.hidden = !R.error && R.connected !== false; e.textContent = R.error || (R.connected === false ? 'The router is not connected.' : '');
+  if (R.server) $('#w-chips').innerHTML = '<span class="chip ' + (R.server.disabled ? '' : 'blocked') + '">hotspot ' + (R.server.disabled ? 'DISABLED (guests not affected)' : 'ENABLED') + '</span> <span class="chip">' + esc(R.server.profile) + '</span>';
+  $('#w-checks').innerHTML = (R.checks || []).map((k) => { const l = lvl[k.level] || lvl.info; return '<div style="margin:3px 0"><b style="color:' + l[1] + ';display:inline-block;width:18px;text-align:center">' + l[0] + '</b> ' + esc(k.text) + '</div>'; }).join('') + '';
+  $('#wf-server').value = c.server; $('#wf-mode').value = c.mode; $('#wf-en').value = c.orgName.en; $('#wf-fa').value = c.orgName.local; $('#wf-lang').value = c.pageLang || 'en'; if (window.fillHsIface) window.fillHsIface(c.iface); $('#wf-portal').value = c.portalUrl; $('#wf-logo').value = c.logoUrl; $('#wf-ssid').value = c.ssids.join(', '); $('#wf-cookie').value = c.cookieDays;
+  wRows('#wp-tbl', Object.entries(c.packages), ([id, p]) => wpRow(id, p, id === c.defaultPackage, true)); wRows('#ww-tbl', c.walled, wwRow); wRows('#wb-tbl', c.bypass, wbRow);
+  $('#wa-pkg').innerHTML = Object.entries(c.packages).map(([id, p]) => '<option value="' + esc(id) + '" ' + (id === c.defaultPackage ? 'selected' : '') + '>' + esc(p.name) + ' (' + esc(p.down) + '/' + esc(p.up) + ', ' + p.devices + ' dev)</option>').join('');
+  if (!$('#wa-until').value) { const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(12, 0, 0, 0); $('#wa-until').value = new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16); }
+  wRows('#wa-tbl', R.accounts || [], (a) => '<tr data-k="' + esc(a.code) + '"><td class="l"><b style="letter-spacing:2px">' + esc(a.code) + '</b></td><td class="l">' + esc(a.room) + ' <span class="ipx">' + esc(a.guest) + '</span></td><td class="l ipx">' + esc(a.profile.replace('mtc-', '')) + '</td><td class="l ipx">' + (a.until ? when(a.until) : '') + '</td><td><button class="mini" data-w="card" data-code="' + esc(a.code) + '">Card</button> <button class="mini" data-w="revoke" data-code="' + esc(a.code) + '">Revoke</button></td></tr>');
+  $('#w-act-count').textContent = (R.active || []).length + ' online';
+  wRows('#wt-tbl', R.active || [], (s) => '<tr data-k="' + esc(s.user + s['mac-address']) + '"><td class="l">' + esc(s.user) + '</td><td class="l ipx">' + esc(s.name) + ' ' + esc(s['mac-address']) + '</td><td class="l ipx">' + esc(s.address) + '</td><td>' + esc(s.uptime) + '</td><td>' + esc(s['session-time-left'] || '') + '</td><td class="dn">' + fmtBytes(Number(s['bytes-out']) || 0) + '</td><td class="upc">' + fmtBytes(Number(s['bytes-in']) || 0) + '</td><td><button class="mini" data-w="kick" data-code="' + esc(s.user) + '">Disconnect</button></td></tr>');
+  if (!$('#wv-frame').dataset.k) refreshWifiPreview();
+}
+function refreshWifiPreview() { $('#wv-frame').dataset.k = '1'; $('#wv-frame').src = P() + '/hotspot/preview?file=' + encodeURIComponent($('#wv-file').value) + '&t=' + Date.now(); }
+function collectHs() {
+  const c = JSON.parse(JSON.stringify(WF.cfg));
+  c.server = $('#wf-server').value.trim(); c.mode = $('#wf-mode').value; c.orgName = { en: $('#wf-en').value, local: $('#wf-fa').value }; c.pageLang = $('#wf-lang').value; c.iface = $('#wf-iface').value; c.portalUrl = $('#wf-portal').value.trim(); c.logoUrl = $('#wf-logo').value.trim(); c.ssids = unCsv($('#wf-ssid').value); c.cookieDays = $('#wf-cookie').value;
+  c.packages = {}; $$('#wp-tbl tbody tr').forEach((tr) => { const id = $('.p-id', tr).value.trim(); if (id) { c.packages[id] = { name: $('.p-n', tr).value, down: $('.p-d', tr).value, up: $('.p-u', tr).value, devices: $('.p-v', tr).value }; if ($('.p-def', tr).checked) c.defaultPackage = id; } });
+  c.walled = $$('#ww-tbl tbody tr').map((tr) => ({ kind: $('.w-k', tr).value, value: $('.w-v', tr).value.trim(), port: $('.w-p', tr).value.trim(), note: $('.w-n', tr).value })).filter((w) => w.value);
+  c.bypass = $$('#wb-tbl tbody tr').map((tr) => ({ mac: $('.b-m', tr).value.trim(), ip: $('.b-i', tr).value.trim(), note: $('.b-n', tr).value })).filter((b) => b.mac || b.ip);
+  return c;
+}
+async function saveHs() { const x = await postJson(P() + '/hotspot/config', { config: collectHs() }); if (!x.ok) { wMsg(x.error, true); toast(x.error, 'bad'); return false; } wMsg('Settings saved (not on the router yet).'); WF.cfg = null; $('#wv-frame').dataset.k = ''; await renderWifi(); refreshWifiPreview(); return true; }
+$('#w-save').addEventListener('click', saveHs);
+$('#wp-add').addEventListener('click', () => $('#wp-tbl tbody').insertAdjacentHTML('beforeend', wpRow('', { name: '', down: '5M', up: '2M', devices: 3 }, false, false)));
+$('#ww-add').addEventListener('click', () => $('#ww-tbl tbody').insertAdjacentHTML('beforeend', wwRow({ kind: 'ip', value: '', port: '', note: '' })));
+$('#wb-add').addEventListener('click', () => $('#wb-tbl tbody').insertAdjacentHTML('beforeend', wbRow({ mac: '', ip: '', note: '' })));
+$('#v-wifi').addEventListener('click', (e) => { const b = e.target.closest('[data-cf="delrow"]'); if (b) b.closest('tr').remove(); });
+$('#wv-file').addEventListener('change', refreshWifiPreview);
+$('#w-prep').addEventListener('click', async () => {
+  if (!(await saveHs())) return;
+  const p = await j(P() + '/hotspot/plan'); $('#hp-msg').textContent = '';
+  if (p.error) { $('#hp-ops').textContent = p.error; $('#hp-apply').hidden = true; $('#hp-warn').hidden = true; $('#hpmodal').hidden = false; return; }
+  $('#hp-ops').textContent = p.ops.length ? p.ops.join('\n') : 'The router already matches these settings. Nothing to change.';
+  $('#hp-warn').hidden = !p.warnings.length; $('#hp-warn').innerHTML = p.warnings.map(esc).join('<br>'); $('#hp-apply').hidden = !p.ops.length; $('#hp-apply').disabled = false; $('#hpmodal').hidden = false;
+});
+$('#hp-close').addEventListener('click', () => { $('#hpmodal').hidden = true; }); $('#hp-cancel').addEventListener('click', () => { $('#hpmodal').hidden = true; });
+$('#hp-apply').addEventListener('click', async () => {
+  $('#hp-apply').disabled = true; $('#hp-msg').style.color = 'var(--mute)'; $('#hp-msg').textContent = 'Saving a router backup and applying...';
+  const x = await postJson(P() + '/hotspot/apply', { confirm: true });
+  if (!x.ok) { $('#hp-msg').style.color = 'var(--bad)'; $('#hp-msg').textContent = x.error; $('#hp-apply').disabled = false; return; }
+  $('#hpmodal').hidden = true; toast('Router prepared: ' + x.ops + ' change(s). The hotspot is still disabled.', 'ok'); renderWifi();
+});
+$('#w-pages').addEventListener('click', async () => {
+  wMsg('Uploading pages...'); const x = await postJson(P() + '/hotspot/pages', { confirm: true });
+  if (!x.ok) { wMsg(x.error, true); toast(x.error, 'bad'); return; }
+  wMsg(x.uploaded + ' pages uploaded; logo: ' + x.logo + (x.problems.length ? '. PROBLEMS: ' + x.problems.join('; ') : '.'), x.problems.length > 0); if (x.problems.length) toast(x.problems.join('\n'), 'bad', 12000); else toast('Portal pages uploaded to the router', 'ok'); renderWifi();
+});
+$('#w-enable').addEventListener('click', async () => {
+  const gf = await uiPrompt('Enable the guest hotspot?', 'From now on every guest device must log in (activation code) before it reaches the internet. Devices online right now lose the internet unless you grandfather them.\n\nGrandfather the devices online now for how many minutes? (0 = none)', '60', { ok: 'Next' }); if (gf === null) return;
+  const ph = await uiPrompt('Confirm', 'Type  ENABLE GUEST WIFI  to enable the hotspot.', '', { ok: 'Enable now', danger: true }); if (ph === null) return;
+  const x = await postJson(P() + '/hotspot/enable', { phrase: ph.trim(), grandfather: Number(gf) || 0 });
+  if (!x.ok) { toast(x.error, 'bad', 12000); wMsg(x.error, true); return; }
+  toast('Guest hotspot ENABLED (' + x.grandfathered + ' devices grandfathered)', 'ok'); renderWifi();
+});
+$('#w-disable').addEventListener('click', async () => { if (!(await uiConfirm('Disable the hotspot?', 'Everybody on the guest Wi-Fi gets the internet again without logging in.', { ok: 'Disable' }))) return; const x = await postJson(P() + '/hotspot/disable', {}); toast(x.ok ? 'Guest hotspot disabled' : x.error, x.ok ? 'ok' : 'bad'); renderWifi(); });
+$('#w-remove').addEventListener('click', async () => { if (!(await uiConfirm('Remove everything?', 'Disables the hotspot and removes every object this tab created (packages, walled garden, bypass bindings, guest codes). The old hotspot profile is restored. Settings here are kept.', { ok: 'Remove all', danger: true }))) return; const x = await postJson(P() + '/hotspot/remove', { confirm: true }); toast(x.ok ? x.removed + ' objects removed' : x.error, x.ok ? 'ok' : 'bad'); renderWifi(); });
+$('#wa-go').addEventListener('click', async () => {
+  const until = Math.floor(new Date($('#wa-until').value).getTime() / 1000); $('#wa-msg').textContent = '';
+  const x = await postJson(P() + '/hotspot/account', { room: $('#wa-room').value, guest: $('#wa-guest').value, package: $('#wa-pkg').value, until });
+  if (!x.ok) { toast(x.error, 'bad'); $('#wa-msg').style.color = 'var(--bad)'; $('#wa-msg').textContent = x.error; return; }
+  toast('Wi-Fi code ' + x.code + ' created', 'ok'); await renderWifi(); printCard(x.code);
+});
+$('#v-wifi').addEventListener('click', async (e) => {
+  const b = e.target.closest('[data-w]'); if (!b) return; const code = b.dataset.code;
+  if (b.dataset.w === 'card') printCard(code);
+  else if (b.dataset.w === 'revoke') { if (!(await uiConfirm('Revoke this code?', 'Code ' + code + ' stops working and its devices are disconnected.', { ok: 'Revoke', danger: true }))) return; const x = await postJson(P() + '/hotspot/account/revoke', { code }); toast(x.ok ? 'Code revoked' : x.error, x.ok ? 'ok' : 'bad'); renderWifi(); }
+  else if (b.dataset.w === 'kick') { const x = await postJson(P() + '/hotspot/kick', { user: code }); toast(x.ok ? x.kicked + ' session(s) disconnected' : x.error, x.ok ? 'ok' : 'bad'); renderWifi(); }
+});
+function printCard(code) {
+  const a = (WF.rep && WF.rep.accounts || []).find((x) => x.code === code) || { code }, c = WF.cfg, pkg = c.packages[(a.profile || '').replace('mtc-', '')] || {}, o = location.origin;
+  const w = window.open('', '_blank', 'width=520,height=760'); if (!w) { toast(__('Allow pop-ups to print the card'), 'bad'); return; }
+  const rtl = !!(window.I18N && I18N.rtl), both = (k) => (I18N.lang === 'en' ? esc(k) : esc(__(k)) + ' <span class="en" dir="ltr">/ ' + esc(k) + '</span>');
+  const logo = (window.APP && APP.settings && APP.settings.hasLogo) ? o + '/org-logo.png' : o + '/assets/mtc-logo.svg', org = esc(c.orgName.en) + (c.orgName.local ? ' <span class="loc">' + esc(c.orgName.local) + '</span>' : '');
+  w.document.write('<!doctype html><html lang="' + I18N.lang + '" dir="' + (rtl ? 'rtl' : 'ltr') + '"><head><meta charset="utf-8"><title>Wi-Fi card ' + esc(code) + '</title><style>@font-face{font-family:Vazirmatn;font-weight:100 900;src:url(' + o + '/assets/fonts/vazirmatn-arabic-wght.woff2);unicode-range:U+0600-06FF,U+200C-200E,U+FB50-FDFF,U+FE70-FEFC}@page{size:A5;margin:10mm}body{font:12pt/1.6 Vazirmatn,Segoe UI,Tahoma,"Microsoft YaHei",sans-serif;color:#1b2430;text-align:center;margin:0;padding:6mm}img.l{height:24mm}h1{margin:3mm 0 1mm;font-size:17pt;color:#1f5fbf}.code{font-size:34pt;font-weight:800;letter-spacing:8px;border:2px dashed #1f5fbf;border-radius:4mm;padding:4mm;margin:5mm 0;direction:ltr}.s{color:#566274;font-size:10pt}.en{direction:ltr;unicode-bidi:isolate}.loc{display:block;font-size:.8em}.ft{margin-top:8mm;border-top:1px solid #d5dbe5;padding-top:3mm;font-size:9pt;color:#566274}</style></head><body>' +
+    '<img class="l" src="' + logo + '"><h1>' + org + '</h1>' +
+    '<div class="s">' + both('Guest Wi-Fi') + '</div>' +
+    '<p>1. ' + both('Connect to the network') + ': <b dir="ltr">' + esc(c.ssids.join('  /  ')) + '</b><br>2. ' + both('Open any website and enter your code') + ':</p>' +
+    '<div class="code">' + esc(code) + '</div>' +
+    '<div class="s">' + (a.room ? both('Reference') + ' ' + esc(a.room) + ' &middot; ' : '') + (pkg.name ? esc(pkg.name) + ' &middot; ' + pkg.devices + ' ' + both('devices') + ' &middot; ' : '') + (a.until ? both('Valid until') + ' ' + new Date(a.until * 1000).toLocaleString() : '') + '</div>' +
+    '<div class="ft">&copy; ' + new Date().getFullYear() + ' Kish IT &middot; kish-it.com &middot; Mikrotik Traffic Control</div><script>setTimeout(function(){window.print()},500)<\/script></body></html>');
+  w.document.close();
+}
+
+// ================= main chart controls =================
+function saveTC() { try { localStorage.setItem('tm.chart', JSON.stringify({ range: TC.range, scale: TC.scale, custom: TC.custom })); } catch { /* ignore */ } }
+function syncTC() {
+  $$('#trange button').forEach((b) => b.classList.toggle('on', b.dataset.v === TC.range));
+  $('#t-title').textContent = TRANGES[TC.range] || TC.range;
+  $('#tscale').value = ['auto', '10', '25', '50', '100', '250', '500', '1000', 'custom'].includes(String(TC.scale)) ? String(TC.scale) : 'auto';
+  $('#tcustom').hidden = $('#tcustom-u').hidden = TC.scale !== 'custom'; $('#tcustom').value = TC.custom;
+}
+async function refreshTotalChart() {
+  if (TC.range === 'live') { if (S.live) chTotal.set(toLive(S.live.total.ring)); return; }
+  try {
+    const h = await j(`${P()}/history?ip=all&range=${TC.range}`);
+    chTotal.set(h.rows.map((r) => { const p = pick(r.slice(1), S.scope); return { t: r[0], d: p.down / h.step, u: p.up / h.step }; }));   // bytes per bucket -> average bytes/s
+  } catch (e) { /* ignore */ }
+}
+$('#trange').addEventListener('click', (e) => { const b = e.target.closest('button'); if (!b) return; TC.range = b.dataset.v; saveTC(); syncTC(); refreshTotalChart(); });
+$('#tscale').addEventListener('change', (e) => { TC.scale = e.target.value; saveTC(); syncTC(); chTotal.draw(); if (TC.scale === 'custom') $('#tcustom').focus(); });
+$('#tcustom').addEventListener('input', (e) => { const n = Number(e.target.value); if (n > 0) { TC.custom = n; saveTC(); chTotal.draw(); } });
+$('#treset').addEventListener('click', () => { TC.range = 'live'; TC.scale = 'auto'; TC.custom = 100; saveTC(); syncTC(); refreshTotalChart(); toast('Graph reset to live 20 minutes, automatic scale'); });
+syncTC(); refreshTotalChart(); setTimeout(() => { refreshTotalChart(); chTotal.draw(); }, 1500);   // first paint: a remembered range (1h, 24h...) was only loaded after a click
+setInterval(() => { if (TC.range !== 'live' && S.view === 'live') refreshTotalChart(); }, 30000);
+const _sv = showView; showView = function (v) { _sv(v); if (v === 'live' && TC.range !== 'live') refreshTotalChart(); };
+
+// badges + periodic refresh of the active view
+async function refreshBadges() {
+  try {
+    await loadRouters(true); loadIpBlocked();
+    const r = S.routers.find((x) => x.id === S.router), st = r && r.status; const set = (id, n) => { const e = $(id); e.textContent = n; e.classList.toggle('zero', !n); };
+    set('#bg-sec', st ? st.secHigh || 0 : 0); set('#bg-blk', st ? st.blocked || 0 : 0); set('#bg-off', st ? st.offWatched || 0 : 0);
+  } catch (e) { /* ignore */ }
+}
+setInterval(refreshBadges, 15000);
+setInterval(() => { if (S.view === 'dest') { renderDest(); renderConc(); } else if (S.view === 'sec') renderSec(); else if (S.view === 'blocked') renderBlocked(); else if (S.view === 'abuse') renderAbuse(); else if (S.view === 'pres') renderPres(); }, 20000);
+
+loadRouters().then(() => { setInterval(pollLive, 3000); refreshBadges(); });
+setInterval(() => { if (S.sel) refreshDetailHist(); if (S.view === 'usage') renderUsage(); }, 60000);
+</script>
+<script src="app-ext.js"></script>
+</body>
+</html>

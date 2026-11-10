@@ -1,0 +1,14 @@
+# runtime data and local artifacts (never commit)
+data/
+data-demo/
+dist/
+node_modules/
+*.log
+*.db
+*.db-shm
+*.db-wal
+secret.key
+org-logo.png
+*.tmp.js
+.DS_Store
+Thumbs.db

@@ -1,0 +1,24 @@
+name: Translation
+description: Improve or add a language
+labels: [translation, good first issue]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Translations are plain JSON (`src/public/i18n/<lang>.json`, English text is the key). See [docs/I18N.md](../blob/main/docs/I18N.md). Pull requests are the fastest way; this form is for discussion or to claim a language.
+  - type: input
+    id: lang
+    attributes:
+      label: Language
+      placeholder: "e.g. Turkish (tr), Spanish (es), Hebrew (he, right-to-left)"
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: What do you want to do?
+      options: [Fix a wrong translation, Complete missing strings, Add a new language]
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes

@@ -1,0 +1,190 @@
+1001|Top: {0} {1}
+1002|{0} of {1} devices
+1003|{0} seen today
+1004|{0} connections tracked - poll {1} ms - updated {2}
+1005|{0} ({1}) connected
+1006|Cannot read the router ({0}). Retrying every 5 s.
+1007|{0} online
+1008|{0} s ago
+1009|{0} min ago
+1010|{0} h ago
+1011|{0} d ago
+1012|since {0} s ago
+1013|since {0} min ago
+1014|since {0} h ago
+1015|since {0} d ago
+1016|for {0} min
+1017|Step {n} of {total}
+1018|Finish
+1019|Test and continue
+1020|Networks
+1021|yes
+1022|no
+1023|done
+1024|missing
+1025|Connecting...
+1026|Cannot connect: {msg}
+1027|Something went wrong.
+1028|Enter the password.
+1029|Login failed: check the user name and password, and that the user may use the API.
+1030|Connection refused: is the API service enabled on that port (IP > Services > api, port 8728)?
+1031|No answer from the router: check the address, the port and any firewall in between.
+1032|Check the address, port and user name.
+1033|Enter the address of this PC first
+1034|The login lacks permissions: {list}. Continue only if you do not need blocking and speed limits.
+1035|The admin PC address must look like 192.168.88.10
+1036|Saving...
+1037|Router saved, but the networks could not be stored: {msg}
+1038|Connected. Next: review the Router setup tab.
+1039|The router is not connected yet.
+1040|Saved. Review the changes below, then apply.
+1041|Applying...
+1042|Router set up: {n} change(s).
+1043|{n} object(s) removed.
+1044|Apply to the router?
+1045|The listed changes are made on the router now. A configuration backup (mtc-before-setup-...) is saved on the router first.
+1046|Apply
+1047|Removes every firewall rule, address list, guest network object and queue-free setup item this page created, and enables FastTrack rules it had disabled. A backup is saved first.
+1048|Remove
+1049|Block internet for single devices (Block button)
+1050|One firewall rule; the list starts empty, so nobody is blocked.
+1051|Block internet addresses (attackers, scanners)
+1052|Two raw firewall rules; the list starts empty.
+1053|Disable FastTrack (needed for speed limits)
+1054|FastTrack bypasses queues. Rules are only disabled, never deleted.
+1055|Create an isolated guest network
+1056|Address, DHCP server, NAT and isolation from your private networks on a free interface.
+1057|24/7
+1058|(no working days)
+1059|devices
+1060|The router is not connected yet.
+1061|Router
+1062|Staff
+1063|Guests
+1064|Ignore
+1065|Office / company
+1066|Hotel / hospitality (24/7)
+1067|Restaurant / cafe
+1068|Shop / retail
+1069|Residential building / home
+1070|School / university / clinic
+1071|Other
+1072|Welcome
+1073|Limit speed of {0}
+1074|Remove limit ({0}/{1})
+1079|Mbps down for
+1080|min (1-15), apply profile
+1081|min, for groups:
+1082|min (1440 = 24 h), for groups:
+2001|· kish-it.com
+2002|Remove limit (
+2003|in total, last
+2004|online now, of
+2005|downloaded and
+2006|Limits apply to
+2007|different hosts,
+2008|Outage history :
+2009|log line(s), last
+2010|Raw whois failed:
+2011|Top destinations (
+2012|outside attackers.
+2013|custom rate instead
+2014|String(s).replace(/[&
+2015|(leave empty to keep)
+2016|pages uploaded; logo:
+2017|devices grandfathered)
+2018|k).join(', ') || '-')}
+2019|device(s) blocked now.
+2020|device(s) talked to it,
+2021|Guest hotspot ENABLED (
+2022|session(s) disconnected
+2023|Cannot read the router (
+2024|Stop security alerts for
+2025|change(s) on the router.
+2026|staff devices in the data
+2027|Remove the speed limit of
+2028|connections tracked - poll
+2029|tnow - (S.act[r.d.ip] || 0)
+2030|r.first && PR.now - r.since
+2031|to reach the network again?
+2032|Could not load the report (
+2033|the monitor is checking them
+2034|Connected - router identity:
+2035|speed limits in this period;
+2036|high). The router traps hold
+2037|/import file-name=mtc-init.rsc
+2038|guest devices over the limits.
+2039|failed router logins from inside
+2040|4 ? 1.5 : 0)); for (let i = 0; i
+2041|Could not look this address up (
+2042|events from inside the network (
+2043|e.g. 178.128.196.80 or 45.79.0.0/16
+2044|(leave empty for the automatic name)
+2045|(from the same network block, cached)
+2046|{ s = Math.max(0, Math.floor(s)); if (s
+2047|change(s). The hotspot is still disabled.
+2048|in Winbox, paste it (or upload it and run
+2049|(queues are tied to the internet interface
+2050|Everything in this list is already looked up
+2051|addresses in the background (about 3 per second)
+2052|Settings are only stored here until you press Prepare.
+2053|(port 43 may be blocked; the table above uses RDAP over https)
+2054|Number of security events recorded for this device in the period
+2055|Nothing for this selection yet. The router log is read every 2 minutes.
+2056|Everything this program needs on the router, created in one place. Every object is tagged
+2057|On a new router the API service may be off or blocked. Download the preparation script, open
+2058|Remove ALL bandwidth-control queues from the router?\nYour configuration on this page is kept.
+2059|Staff devices are merged by MAC address. Per-minute data (abuse check) covers at most the last 31 days.
+2060|Each router keeps its own history. Passwords you save here are encrypted for this Windows user on this PC.
+2061|Applies to this device's internet traffic only, above the group rule. It ends by itself when the time is over.
+2062|Everything on this page belongs to the router selected at the top; each router has its own configuration and history.
+2063|A FastTrack rule is enabled on this router: fast-tracked traffic bypasses queues. Disable FastTrack before enforcing limits.
+2064|Monitoring needs a RouterOS API user with read access. The monitor only reads (connection table, ARP, DHCP leases, addresses).
+2065|Per-minute detail (used by the abuse section) is kept 31 days; daily totals are kept forever. Destination details are kept 120 days.
+2066|The hotspot stays disabled. Only objects tagged [mtc-hotspot] / named mtc-* are created or changed; other hotspot objects on the router stay.
+2067|Traffic is the Internet traffic measured on the router per device address (downloads and uploads), not counting traffic inside the internal network.
+2068|The device keeps its local network access, but every connection to the internet is dropped and open ones are cut. It unblocks itself when the time ends.
+2069|Disables the hotspot and removes every object this tab created (packages, walled garden, bypass bindings, guest codes). The old hotspot profile is restored. Settings here are kept.
+2070|A MAC whose second digit is 2, 6, A or E is a made-up address, not the one printed on the hardware. The device is real but cannot be recognised by its MAC: block it by IP or give it a fixed lease and name instead.
+2071|Staff = devices on the office PC and staff WiFi networks, plus any device you mark as staff. Devices with the same MAC address are merged even if their IP changed. Click a row to see its days; double-click the name to rename.
+2072|From now on every guest device must log in (activation code) before it reaches the internet. Devices online right now lose the internet unless you grandfather them.\n\nGrandfather the devices online now for how many minutes? (0 = none)
+2073|Every packet from this internet address to the router or the internal network is dropped, and local devices can no longer reach it. Use it for scanners, brute-force attempts and other attackers. You can unblock it again in the Blocked tab.
+2074|Every block, unblock and speed limit made from the dashboard is recorded with time, device, duration and note, plus changes made directly on the router (Winbox or script) and blocks that ended by timeout. The log is kept forever on this PC.
+2075|Same device name with several MAC addresses, one after the other and never together: a phone with Private Wi-Fi address (iPhone / Android) that rotates its address. Tracking started when this version was installed, so rotation shows up over days and weeks.
+2076|so it can be found and removed again. Changes are previewed first, a configuration backup is saved on the router before applying, and nothing else on the router is touched. You can also download the same changes as a RouterOS script (.rsc) and run it yourself.
+2077|Found by protocol and well-known port (OpenVPN, WireGuard, IPsec, PPTP, L2TP, Tor, Shadowsocks...). Possible tunnel means nearly all of a busy devices traffic goes to one unknown address, which is how many VPN apps and proxies on port 443 look. VPNs hide what is inside, so only the volume is known.
+2078|A blocked device keeps its local network access (printers, file server, DHCP) but cannot reach the internet. To block someone, use the Block button next to a device in Live, Abuse or Security, or in the device panel. Blocking works by address: a phone that changes its address needs a fixed (static) lease.
+2079|Captive portal for visitors (hotel, restaurant, apartment building, office reception, school...): devices see your branded page and the walled-garden sites; the internet opens after login with an access code that the reception / staff issues, with a package (speed, number of devices) and an end time. Preparing creates only tagged objects and leaves the hotspot
+2080|Block a single address or a range (/16 to /32). Everything from it to the router and the internal network is dropped, and local devices cannot reach it. Also available as a Block button next to outside addresses in Destinations, Security and the device panel. Never blockable: private addresses, this router's own public address, the ISP gateway and the DNS servers in use.
+2081|Top staff and guest users, top destinations and types, abuse findings, security events, blocked and speed-limited devices, offline devices and the most important results. English, Persian, Arabic, Russian or Chinese (right-to-left languages are laid out correctly), with your organization name and logo and the Kish IT copyright. The report opens as a print-ready page: use
+2082|One row per device with all of its events combined and how often each kind happened; click a row to see the individual events. Detected from the router's connection table: scans (many unanswered attempts), local-network sweeps, brute-force patterns, connection floods and attempts on router management ports. Servers that legitimately scan (monitoring servers, controllers) are on the ignore list.
+2083|Counts INTERNET traffic only. When a device passes a limit it is slowed for the chosen time and then released by itself. After a limit, usage is counted again from the next day, so a device is not limited twice for the same traffic. Devices that already have an individual limit, belong to a user entry, are admin PCs or on the scan-ignore list are skipped. Needs the master switch on and the queues applied to the router.
+3002|Destination types are an estimate from well-known networks, reverse-DNS names and ports. Many CDN / cloud addresses stay "Other / Unknown". Names fill in as addresses are looked up.
+3003|= every outside address that appears in the router's log (failed logins, IPsec probes, firewall log rules; kept per day here even after the router's log rolls over, counted from the first time this version ran),
+3004|= the router's port-scanner / SSH / telnet blacklists,
+3005|= outside hosts our devices talked to. Owner data comes from RDAP / whois (cached 90 days); only the address being looked up is sent. Click a row or Whois for the full record.
+3006|Internet traffic only. "Busy minute" = a minute with at least the configured MB of traffic (streaming / downloading). Click a row for the device's graphs and destinations.
+3007|A device is online when it moves traffic or answers the router (ARP / ping). It is marked offline when the router cannot reach it, or after it stays silent for 6 minutes and two pings fail (guests: 30 min of silence). "Never seen" = in the router's DHCP list but not seen since the monitor started. Watched by default: staff PCs, access points, IoT controllers, servers, CCTV, door locks and VoIP phones. Click a row for its outage history.
+3008|); LAN traffic is never limited. Each group gets a
+3009|, so every new device is covered automatically. Individual devices or users can be given a different profile (above the group rule) manually or by auto-throttle. Nothing is enforced until you turn the master switch on and press Apply.
+3010|: nobody is affected until you press
+3011|. Your staff network is not touched.
+3012|A router configuration export (before-hotspot-...) is saved first. Undo everything with "Remove everything" on the Guest Wi-Fi tab.
+3013|A router configuration export (before-qos-...) is saved first. Only queues named mtc-* are touched. You can undo everything with "Remove all from router" or routeros/mtc-remove.rsc.
+3026|- usage per day
+3042|. Whois known for
+3043|(press "Look up all" to fetch the rest).
+3047|). Only public IPv4 addresses have a whois record.
+3050|Blocking is not enabled on the router yet: open the Router setup tab and apply the "block" rules once. Until then the Block buttons will say so.
+3064|Blocking internet addresses is not enabled on the router yet. Open the Router setup tab and apply the "block internet addresses" rules once (a config export is taken first).
+3065|The block rule is not on the router yet, so nobody can be blocked. Open the Router setup tab and apply the "block devices" rules once (a config export is taken first).
+3066|% of all internet traffic, last
+3067|MACs in 30 days
+3079|No [qos] queues on the router yet. Use "Preview changes" then Apply.
+3106|), then continue here. It enables the API service for this PC only and creates the API user.
+3107|= your own people and devices,
+3108|= visitors, customers, residents' guests. Devices are grouped by the router network they are on.
+3113|. Visitor Wi-Fi with access codes:
+3114|. Both create only tagged objects and keep a way back.
+3116|Destination types are an estimate based on well-known networks, reverse-DNS names and ports; many CDN / cloud addresses remain "Other / Unknown".
+3117|IoT controller

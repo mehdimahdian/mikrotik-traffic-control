@@ -1,0 +1,45 @@
+name: Bug report
+description: Something does not work as described
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Please do not paste passwords, API keys, public IP addresses or customer data.** Blur or crop screenshots.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: If you can, reproduce it with `npm run demo` (the fake router) and say so.
+  - type: input
+    id: version
+    attributes:
+      label: Mikrotik Traffic Control version
+      placeholder: "1.0.0 (see the footer tooltip or package.json)"
+  - type: input
+    id: ros
+    attributes:
+      label: RouterOS version and router model
+      placeholder: "7.19.3, CCR2116"
+  - type: dropdown
+    id: os
+    attributes:
+      label: Where does the program run?
+      options: [Windows 11, Windows 10, Linux, macOS, Other]
+  - type: dropdown
+    id: lang
+    attributes:
+      label: UI language
+      options: [English, فارسی, العربية, Русский, 中文]
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: "`<data folder>/manager.log.err` and `routers/<id>/monitor.log` - remove anything private."
+      render: text

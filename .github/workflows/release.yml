@@ -1,0 +1,50 @@
+name: Release
+
+# Push a tag like v1.0.0 (or run this workflow by hand) to build the Windows installer and the portable zip
+# and publish them on the GitHub Releases page.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Tests
+        run: npm test
+
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+
+      - name: Build installer and zip (bundles node.exe)
+        shell: pwsh
+        run: |
+          $node = (Get-Command node).Source
+          ./windows/build-release.ps1 -NodeExe $node
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: dist/*.*
+          if-no-files-found: error
+
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*-Setup.exe
+            dist/*-win-x64.zip
+            dist/SHA256SUMS.txt
+          generate_release_notes: true

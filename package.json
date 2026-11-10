@@ -1,0 +1,44 @@
+{
+  "name": "mikrotik-traffic-control",
+  "version": "1.0.0",
+  "description": "Live traffic monitoring, usage quotas, bandwidth control, guest Wi-Fi and security alerts for MikroTik RouterOS networks. Multi-language (en, fa, ar, ru, zh).",
+  "license": "MIT",
+  "author": "Mehdi Mahdian (https://github.com/mehdimahdian)",
+  "homepage": "https://github.com/mehdimahdian/mikrotik-traffic-control#readme",
+  "private": false,
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "start": "node src/manager.js",
+    "demo": "node test/demo.js",
+    "test": "node --test test/*.test.js",
+    "build:rsc": "node tools/build-rsc.js",
+    "build:release": "pwsh -NoProfile -File windows/build-release.ps1",
+    "lint": "node tools/check-syntax.js",
+    "i18n:check": "node tools/i18n-check.js"
+  },
+  "keywords": [
+    "mikrotik",
+    "routeros",
+    "traffic",
+    "monitoring",
+    "bandwidth",
+    "hotspot",
+    "quota",
+    "network"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mehdimahdian/mikrotik-traffic-control.git"
+  },
+  "bugs": {
+    "url": "https://github.com/mehdimahdian/mikrotik-traffic-control/issues"
+  },
+  "contributors": [
+    {
+      "name": "Kish IT (copyright holder)",
+      "url": "https://kish-it.com"
+    }
+  ]
+}

@@ -1,0 +1,981 @@
+1|OK
+2|Up
+3|Id
+4|On
+5|By
+6|LAN
+7|All
+8|SSH
+9|MAC
+10|For
+11|Ack
+12|Low
+13|Live
+14|Auto
+15|Mbps
+16|Type
+17|Last
+18|Down
+19|What
+20|Name
+21|User
+22|Note
+23|Ends
+24|When
+25|Port
+26|Code
+27|Copy
+28|Save
+29|Card
+30|Kbps
+31|Gbps
+32|Top:
+33|Give
+34|Mail
+35|SSH,
+36|Next
+37|DHCP
+38|Back
+39|Days
+40|Peak
+41|High
+42|Staff
+43|Abuse
+44|Audit
+45|Today
+46|Scale
+47|Reset
+48|Conns
+49|Total
+50|Share
+51|Worst
+52|Count
+53|Group
+54|State
+55|Watch
+56|Limit
+57|Login
+58|Close
+59|Whois
+60|(LAN)
+61|Block
+62|None.
+63|Enter
+64|IPsec
+65|Allow
+66|Apple
+67|">Ack
+68|Guest
+69|Other
+70|Notes
+71|Cancel
+72|20 min
+73|1 Gbps
+74|Upload
+75|Device
+76|Period
+77|7 days
+78|Events
+79|Telnet
+80|Source
+81|Online
+82|Status
+83|Target
+84|Action
+85|Lasted
+86|Custom
+87|Enable
+88|1 year
+89|1 hour
+90|Remote
+91|Router
+92|Ignore
+93|Empty.
+94|Remove
+95|Revoke
+96|Escape
+97|Edit "
+98|Saved.
+99|Failed
+100|Gaming
+101|Copied
+102|or the
+103|Guests
+104|Change
+105|Report
+106|Medium
+107|Server
+108|Kish IT
+109|English
+110|Blocked
+111|Reports
+112|10 Mbps
+113|25 Mbps
+114|50 Mbps
+115|Network
+116|30 days
+117|Devices
+118|Address
+119|Country
+120|Seen by
+121|Flagged
+122|Offline
+123|General
+124|Profile
+125|Details
+126|Disable
+127|Default
+128|Package
+129|90 days
+130|4 hours
+131|Routers
+132|History
+133|Unblock
+134|Ack all
+135|same IP
+136|Unlimit
+137|">QUOTA
+138|#tbl th
+139|Remarks
+140|min ago
+141|Applied
+142|Confirm
+143|Used by
+144|Router:
+145|Security
+146|Internet
+147|100 Mbps
+148|250 Mbps
+149|500 Mbps
+150|Download
+151|Today up
+152|All time
+153|120 days
+154|Sources:
+155|Busy min
+156|24 hours
+157|Of quota
+158|all time
+159|Language
+160|Settings
+161|API port
+162|Password
+163|API user
+164|Severity
+165|Name for
+166|Remove "
+167|">Remove
+168|none yet
+169|">Revoke
+170|IPTV box
+171|Offline:
+172|Custom...
+173|Yesterday
+174|This week
+175|Right now
+176|All conns
+177|Addresses
+178|Peak Mbps
+179|Off-hours
+180|last 24 h
+181|last year
+182|Last seen
+183|MACs seen
+184|Any state
+185|Live rate
+186|English +
+187|Readiness
+188|Time left
+189|Block for
+190|Search...
+191|host name
+192|last hour
+193|Saving...
+194|">Unblock
+195|Messaging
+196|">Ack all
+197|Unblocked
+198|Reference
+199|staff and
+200|Generated
+201|Copyright
+202|Top staff
+203|Door lock
+204|Security:
+205|VPN & MACs
+206|Upload now
+207|Any status
+208|Last 3 min
+209|Today down
+210|This month
+211|Last month
+212|Export CSV
+213|Staff / PC
+214|Peak today
+215|router log
+216|trap lists
+217|Peak conns
+218|First seen
+219|Online now
+220|All groups
+221|Uptime 7 d
+222|+ add user
+223|Login page
+224|Guest name
+225|30 minutes
+226|Loading...
+227|over quota
+228|Disconnect
+229|use strict
+230|seen today
+231|#tbl tbody
+232|#tbl thead
+233|Testing...
+234|IoT / MQTT
+235|Iran (.ir)
+236|Looking up
+237|Allocation
+238|Router log
+239|#w-body tr
+240|first seen
+241|never seen
+242|chip quota
+243|Remove all
+244|Enable now
+245|Wi-Fi code
+246|Next steps
+247|blocks and
+248|Top guests
+249|CDN / ابری
+250|VPN / تونل
+251|VoIP phone
+252|Guest Wi-Fi
+253|Today total
+254|Last 7 days
+255|Staff total
+256|Busiest day
+257|Days active
+258|To internet
+259|Destination
+260|Connections
+261|Look up all
+262|Our traffic
+263|our devices
+264|Why flagged
+265|last 7 days
+266|Unblocks in
+267|VPN traffic
+268|Device name
+269|Offline for
+270|Outages 7 d
+271|last 2 days
+272|last 3 days
+273|GB or total
+274|All actions
+275|Open report
+276|+ add entry
+277|Valid until
+278|Create code
+279|Limit speed
+280|Apply limit
+281|Save router
+282|Cancel edit
+283|NO INTERNET
+284|Google push
+285|up">LIMITED
+286|#utbl tbody
+287|#ftbl tbody
+288|#stbl tbody
+289|#rtbl tbody
+290|Blocking...
+291|CDN / Cloud
+292|#dtbl tbody
+293|day(s) from
+294|#xtbl tbody
+295|Reverse DNS
+296|Our devices
+297|Copy failed
+298|#atbl tbody
+299|#btbl tbody
+300|#ptbl tbody
+301|up">Unlimit
+302|Applying...
+303|(not found)
+304|. PROBLEMS:
+305|Setup guide
+306|uploaded by
+307|Blocked now
+308|Destinations
+309|External IPs
+310|Router setup
+311|Download now
+312|All networks
+313|Blocked only
+314|Last 30 days
+315|Organisation
+316|Network / AS
+317|last 30 days
+318|Not verified
+319|last 14 days
+320|GB or upload
+321|last 90 days
+322|中文 + English
+323|+ add device
+324|Room / guest
+325|Add a router
+326|for PC names
+327|No data yet.
+328|Nothing yet.
+329|not verified
+330|last 6 hours
+331|ms - updated
+332|#tabs button
+333|Content-Type
+334|Remove limit
+335|Social media
+336|VPN / Tunnel
+337|#dctbl tbody
+338|, looking up
+339|#xsrc button
+340|Network name
+341|#cdtbl tbody
+342|#ddtbl tbody
+343|#setbl tbody
+344|#rltbl tbody
+345|#lgtbl tbody
+346|#bitbl tbody
+347|#vptbl tbody
+348|#mctbl tbody
+349|#mltbl tbody
+350|went offline
+351|#autbl tbody
+352|">Disconnect
+353|Code revoked
+354|New Terminal
+355|Access point
+356|% of the top
+357|Abuse check:
+358|· kish-it.com
+359|Usage history
+360|Configuration
+361|All devices -
+362|Staff devices
+363|Owner (whois)
+364|Internet used
+365|Port scanners
+366|Block address
+367|+ add profile
+368|Mbps down for
+369|Max (up/down)
+370|Audit history
+371|Device / user
+372|+ add package
+373|Save settings
+374|Total traffic
+375|Status filter
+376|looking up...
+377|within limits
+378|WhatsApp/XMPP
+379|last 24 hours
+380|Rename device
+381|#scope button
+382|Hosting / VPS
+383|Torrent / P2P
+384|Remote access
+385|Local network
+386|Address range
+387|Abuse contact
+388|none recorded
+389|#ddper button
+390|port scanners
+391|#rlist button
+392|#qp-tbl tbody
+393|#qg-tbl tbody
+394|#qu-tbl tbody
+395|#qd-tbl tbody
+396|#qq-tbl tbody
+397|Speed limited
+398|Limit removed
+399|#wp-tbl tbody
+400|#ww-tbl tbody
+401|#wb-tbl tbody
+402|"> Wi-Fi card
+403|Working hours
+404|Organization:
+405|Top uploaders
+406|User / device
+407|Offline since
+408|: T(D.title)}
+409|Manage routers
+410|Active devices
+411|show all staff
+412|Note on router
+413|Guest networks
+414|Enforce limits
+415|Recent actions
+416|MAC (optional)
+417|Block internet
+418|Show raw whois
+419|Outage history
+420|Remove limit (
+421|#drange button
+422|Remove router?
+423|Active samples
+424|">router log x
+425|in total, last
+426|Lookup problem
+427|Hide raw whois
+428|#crange button
+429|#agroup button
+430|none right now
+431|online now, of
+432|tracking since
+433|Limit speed of
+434|#qqu-tbl tbody
+435|Auto-throttled
+436|#trange button
+437|Router address
+438|System Scripts
+439|Internet (WAN)
+440|Working hours:
+441|What to set up
+442|downloaded and
+443|last 20 minutes
+444|Devices checked
+445|Acknowledge all
+446|until I unblock
+447|Limits apply to
+448|(master switch)
+449|فارسی + English
+450|Apply to router
+451|Test connection
+452|counts as staff
+453|Who it talks to
+454|(stop ignoring)
+455|In this period:
+456|#spreset button
+457|- usage per day
+458|#uperiod button
+459|Video streaming
+460|Other / Unknown
+461|#dperiod button
+462|#xperiod button
+463|to the internet
+464|#aperiod button
+465|MACs in 30 days
+466|watched devices
+467|" selected>last
+468|Limits disabled
+469|#rp-lang button
+470|objects removed
+471|Weekly schedule
+472|Staff networks:
+473|Guest networks:
+474|DHCP lease time
+475|Security events
+476|Top staff users
+477|Top guest users
+478|Blocked devices
+479|SSH brute-force
+480|Blocked / audit
+481|(obsolete key 481)
+482|Top staff user:
+483|Online / Offline
+484|Avg / active day
+485|Top destinations
+486|Peak hosts today
+487|Events in period
+488|Not verified yet
+489|min, for groups:
+490|Blocks in period
+491|Guest login page
+492|Unblock internet
+493|Unblock address?
+494|Google / YouTube
+495|different hosts,
+496|Announced prefix
+497|Raw whois failed
+498|Check the values
+499|Port / host scan
+500|not acknowledged
+501|Outage history :
+502|#qp-tbl tbody tr
+503|#qu-tbl tbody tr
+504|#wp-tbl tbody tr
+505|#ww-tbl tbody tr
+506|#wb-tbl tbody tr
+507|Router prepared:
+508|After this, open
+509|Save and preview
+510|Control actions:
+511|Destination types
+512|Offline (watched)
+513|Blocked right now
+514|Actions in period
+515|Blocks / unblocks
+516|Remove everything
+517|العربية + English
+518|Русский + English
+519|Who used the most
+520|until I remove it
+521|No devices match.
+522|Restore internet?
+523|none recorded yet
+524|. Whois known for
+525|log line(s), last
+526|Router trap lists
+527|Raw whois failed:
+528|">(stop ignoring)
+529|Wi-Fi code issued
+530|Choose both dates
+531|Revoke this code?
+532|Organization name
+533|e.g. Sunrise Cafe
+534|(obsolete key 534)
+535|Internet uploaded
+536|Top guest device:
+537|400 1em Vazirmatn
+538|700 1em Vazirmatn
+539|Speed-limited only
+540|Average per device
+541|Find abusive usage
+542|Listed for another
+543|Remote address(es)
+544|Profile per device
+545|then apply profile
+546|Save configuration
+547|Address (optional)
+548|Prepare the router
+549|Download (e.g. 2M)
+550|Upload (e.g. 512k)
+551|e.g. Branch office
+552|Nobody is blocked.
+553|Block internet for
+554|Video calls / VoIP
+555|Top destinations (
+556|Devices talking to
+557|is already blocked
+558|Disable all limits
+559|Wi-Fi code revoked
+560|Wi-Fi code expired
+561|Uploading pages...
+562|Remove everything?
+563|telnet brute-force
+564|outside attackers.
+565|Ignored / protected
+566|Devices using a VPN
+567|Live rate (up/down)
+568|see the Blocked tab
+569|Print / Save as PDF
+570|Guest Wi-Fi hotspot
+571|Hotspot server name
+572|custom rate instead
+573|leave empty to keep
+574|Remove speed limit?
+575|Speed limit removed
+576|Ignore this device?
+577|Microsoft / Updates
+578|Destination types -
+579|using one right now
+580|in the last 30 days
+581|Internet interface:
+582|Disable all limits?
+583|Remove from router?
+584|State on the router
+585|Internet downloaded
+586|On router trap lists
+587|include acknowledged
+588|VPN and tunnel usage
+589|only watched devices
+590|GB (0 = not checked)
+591|Device overrides now
+592|Queues on the router
+593|Search staff / PC...
+594|for the whole period
+595|starting / no answer
+596|Owner / organisation
+597|Registered / changed
+598|Failed router logins
+599|All limits disabled.
+600|Disable the hotspot?
+601|Abuse check - guests
+602|External IP addresses
+603|Staff (working hours)
+604|What happened (times)
+605|Private (random) MACs
+606|Share of its internet
+607|Save general settings
+608|internet traffic only
+609|Remember login (days)
+610|Refresh from registry
+611|not in the router log
+612|Very many connections
+613|" style="width:100%">
+614|#qg-tbl tr[data-gid="
+615|Blocked on the router
+616|Guest hotspot ENABLED
+617|Guest hotspot removed
+618|pages uploaded; logo:
+619|Download mtc-init.rsc
+620|Loading the report...
+621|typical active device
+622|Summary & key results
+623|Kish IT · kish-it.com
+624|Usage per staff device
+625|Concurrent connections
+626|Limits & working hours
+627|New high alerts (24 h)
+628|when a device averages
+629|Disable all limits now
+630|Remove all from router
+631|Speed limits in period
+632|Printable reports (A4)
+633|2. Upload portal pages
+634|until the end of today
+635|...but only above (MB)
+636|Live - last 20 minutes
+637|Which traffic to count
+638|since monitoring began
+639|). Retrying every 5 s.
+640|Block internet address
+641|internet access again?
+642|Asking the registry...
+643|packets dropped so far
+644|Enter an address first
+645|Guest hotspot prepared
+646|Hotspot pages uploaded
+647|Guest hotspot disabled
+648|devices grandfathered)
+649|Connect to the network
+650|Apply to the router...
+651|Different destinations
+652|Most important results
+653|device(s) blocked now.
+654|Distinct internet hosts
+655|Typical device (median)
+656|default rate per device
+657|WAN interface override:
+658|Guest network interface
+659|Search name, IP, MAC...
+660|has an individual limit
+661|device(s) talked to it,
+662|no outages recorded yet
+663|" style="width:80px"> x
+664|" style="width:100%"> x
+665|Guest hotspot ENABLED (
+666|session(s) disconnected
+667|Download as .rsc script
+668|Nothing selected above.
+669|Offline watched devices
+670|Total Internet traffic:
+671|Mikrotik Traffic Control
+672|Contacted by our devices
+673|Devices that changed MAC
+674|Addresses (oldest first)
+675|Configuration for router
+676|Connection / credentials
+677|Closest to the quota now
+678|1. Prepare the router...
+679|Guests: GB per day limit
+680|Top of the graph in Mbps
+681|Search IP, name, type...
+682|Cannot read the router (
+683|different internet hosts
+684|Stop security alerts for
+685|Ignored for scan alerts:
+686|#qa-groups input:checked
+687|#qq-groups input:checked
+688|change(s) on the router.
+689|Removed from the router.
+690|#rtbl button[data-edit="
+691|Internet address blocked
+692|Gateway address / prefix
+693|%;background:var(--up)">
+694|All staff - usage per day
+695|Blocked from the internet
+696|Went offline in last 24 h
+697|min (1-15), apply profile
+698|Upload limit (GB per day)
+699|staff devices in the data
+700|Remove the speed limit of
+701|Probing router management
+702|Bandwidth control applied
+703|Bandwidth control removed
+704|Enable the guest hotspot?
+705|Router administrator user
+706|Offline devices (watched)
+707|Largest destination type:
+708|3. Enable guest hotspot...
+709|Connected guests right now
+710|Flag at N times the median
+711|What it is doing right now
+712|[pick(p, S.scope).down]))}
+713|Nothing in the router log.
+714|connections tracked - poll
+715|can use the internet again
+716|Router log kept here since
+717|Looking up the registry...
+718|Scanning the local network
+719|Internet address unblocked
+720|I already have an API user
+721|Nobody is over the limits.
+722|Guests / visitors (all day)
+723|Router log: who is knocking
+724|Organization name (English)
+725|Language of the login pages
+726|Local DNS server (optional)
+727|to reach the network again?
+728|Brute-force / flood pattern
+729|Peak concurrent connections
+730|Could not load the report (
+731|the monitor is checking them
+732|per day (resets at midnight)
+733|Abuse limits & working hours
+734|No traffic in the last poll.
+735|No data for this period yet.
+736|Connected - router identity:
+737|Unblocked (timeout / router)
+738|Usage quota passed - limited
+739|The router is not connected.
+740|speed limits in this period;
+741|high). The router traps hold
+742|Kish IT \\00B7 kish-it.com";
+743|Monitor service not reachable
+744|Destination types - right now
+745|All bandwidth limits disabled
+746|Address blocked on the router
+747|"> <input class="p-d" value="
+748|"> <input class="b-n" value="
+749|The other side of the internet
+750|Reached / logged on the router
+751|Internal sources in router log
+752|min (1440 = 24 h), for groups:
+753|(obsolete key 753)
+754|Contacting many internal hosts
+755|DISABLED (guests not affected)
+756|= your own people and devices,
+757|guest devices over the limits.
+758|Working hours & abuse limits...
+759|Wi-Fi access codes for visitors
+760|Staff: GB per working day limit
+761|Search device, address, note...
+762|No internet address is blocked.
+763|No individual limits right now.
+764|% of all internet traffic, last
+765|known devices (guests excluded)
+766|Allow pop-ups to print the card
+767|Configuration Bandwidth control
+768|Network Usage & Security Report
+769|Outside scanners on router lists
+770|failed router logins from inside
+771|Networks (CIDR, comma separated)
+772|Preview changes on the router...
+773|Speed limits / bandwidth control
+774|Reference (room, table, unit...)
+775|Search IP, owner, country, AS...
+776|4 ? 1.5 : 0)); for (let i = 0; i
+777|Not staff: remove from this list
+778|Could not look this address up (
+779|Which networks are used by whom?
+780|events from inside the network (
+781|Redirect to my own guest web page
+782|Busy minute = at least (MB / min)
+783|Staff: busy minutes per day limit
+784|DNS servers for guests (optional)
+785|show all devices, not only flagged
+786|watched devices that are still off
+787|Device addresses (comma separated)
+788|. Visitor Wi-Fi with access codes:
+789|(obsolete key 789)
+790|Nothing to report for this period.
+791|watched device(s) are offline now.
+792|Bandwidth control (MikroTik queues)
+793|Address / host (* allowed in hosts)
+794|e.g. 178.128.196.80 or 45.79.0.0/16
+795|Portal pages uploaded to the router
+796|i.name !== R.wan); el.innerHTML = `
+797|Abuse check - staff (working hours)
+798|: nobody is affected until you press
+799|. Your staff network is not touched.
+800|Logo address (fetched by the router)
+801|Guests: concurrent connections limit
+802|11px "Segoe UI",system-ui,sans-serif
+803|(leave empty for the automatic name)
+804|Address unblocked (timeout / router)
+805|Open any website and enter your code
+806|Will be changed when you press Apply
+807|only devices active in the last 5 min
+808|Suspicious devices inside the network
+809|Devices that change their MAC address
+810|Top destinations right now (by speed)
+811|(from the same network block, cached)
+812|Saved (not applied to the router yet).
+813|Saving a router backup and applying...
+814|Address of this PC, e.g. 192.168.88.10
+815|Audit trail (blocks, unblocks, limits)
+816|Changes that will be made on the router
+817|Settings saved (not on the router yet).
+818|Speed limits and the daily usage quota:
+819|Top destinations (most interactive IPs)
+820|?\nThe group default rule still applies.
+821|Tick "show all devices" to see everyone.
+822|Share the internet with NAT (masquerade)
+823|" style="vertical-align:middle"><path d="
+824|Bandwidth control removed from the router
+825|change(s). The hotspot is still disabled.
+826|in Winbox, paste it (or upload it and run
+827|Remove everything this program created...
+828|(queues are tied to the internet interface
+829|4. Auto-throttle (sustained heavy download)
+830|No devices match. Change the filters above.
+831|(I18N.weekStart + i) % 7); el.innerHTML = `
+832|Admin PC address (never blocked or limited)
+833|Internal DNS server for PC names (optional)
+834|%;background:var(--down)"> <i style="width:
+835|1. Profiles (rates: 4M, 512k, 0 = unlimited)
+836|Branded page on the router (activation code)
+837|Organization name (local language, optional)
+838|Everything in this list is already looked up
+839|Outside attackers caught by the router traps
+840|(obsolete key 840)
+841|Devices by concurrent connections (right now)
+842|No destinations recorded for this period yet.
+843|No VPN or tunnel traffic seen in this period.
+844|Type ENABLE GUEST WIFI to enable the hotspot.
+845|Type of business (sets default working hours)
+846|Outside attackers caught by the router's traps
+847|Walled garden (always reachable without login)
+848|Used by the Abuse tab. Applies to this router.
+849|Only allow the new user to log in from this PC
+850|style="width:130px"> <input class="p-n" value="
+851|style="width:110px"> <input class="p-n" value="
+852|stops working and its devices are disconnected.
+853|Graph reset to live 20 minutes, automatic scale
+854|Open 24/7 (every minute counts as working time)
+855|Administrator password (used once, never saved)
+856|Prepare the guest hotspot: changes on the router
+857|addresses in the background (about 3 per second)
+858|Never flagged as probing the router (admin PCs):
+859|" style="width:100%"> <input class="p-d" value="
+860|" style="width:80px"> <input class="p-u" value="
+861|" style="width:70px"> <input class="p-u" value="
+862|" style="width:70px"> <input class="p-v" value="
+863|" style="width:100%"> <input class="w-p" value="
+864|" style="width:80px"> <input class="w-n" value="
+865|Blocked internet addresses (attackers / knockers)
+866|Private (randomized) MAC addresses on the network
+867|" style="width:150px"> <input class="u-i" value="
+868|); LAN traffic is never limited. Each group gets a
+869|). Only public IPv4 addresses have a whois record.
+870|" title="Limit this device's internet speed">Limit
+871|" title="Block this device from the internet">Block
+872|font:8.5pt "Segoe UI",Tahoma,sans-serif;color:#667;
+873|Click a destination to see which devices talk to it.
+874|Admin PCs (never blocked / limited, comma separated)
+875|Wi-Fi names printed on guest cards (comma separated)
+876|Router added and now monitored (history starts now).
+877|The router refuses the connection / brand-new router
+878|Back to the default: live 20 minutes, automatic scale
+879|No device in the selected groups has used 100 MB yet.
+880|= the router's port-scanner / SSH / telnet blacklists,
+881|Settings are only stored here until you press Prepare.
+882|" title="Whois / owner of this internet address">Whois
+883|. Both create only tagged objects and keep a way back.
+884|never limit these devices (addresses, comma separated):
+885|" fill="none" stroke="var(--down)" stroke-width="1.4"/>
+886|Master switch is OFF: enable it in Configuration first.
+887|">Card <button class="mini" data-w="revoke" data-code="
+888|Most concurrent connections - by destination (right now)
+889|Staff networks (router interface names, comma separated)
+890|Today's internet usage of this device: download + upload
+891|Servers that scan on purpose (ignored by security alerts)
+892|Guest devices, internet traffic all day ({from} to {to}).
+893|}@bottom-right{content:counter(page) " / " counter(pages);
+894|My own guest web page (optional, also allowed before login)
+895|" title="This address is blocked: click to unblock">Unblock
+896|). Is the Traffic Monitor running and the router connected?
+897|No device has changed its MAC yet. This builds up over days.
+898|" placeholder="AA:BB:CC:DD:EE:FF"> <input class="b-i" value="
+899|The router already matches these settings. Nothing to change.
+900|@font-face{font-family:Vazirmatn;font-weight:100 900;src:url(
+901|(port 43 may be blocked; the table above uses RDAP over https)
+902|Number of security events recorded for this device in the period
+903|" title="Block this internet address (attacker / knocker)">Block
+904|@page{size:A4;margin:11mm 11mm 17mm;@bottom-left{content:"\\00A9
+905|5. Usage quota (too much download / upload temporary speed limit)
+906|The router already matches this configuration. Nothing to change.
+907|Look up whois for every address in this list that has no record yet
+908|" style="width:50px"> <input type="radio" name="wdef" class="p-def"
+909|No [qos] queues on the router yet. Use "Preview changes" then Apply.
+910|2. Default rule per group (applies to every device in these networks)
+911|No data for this period yet. History builds up while the monitor runs.
+912|Guests cannot reach private networks or the router (except DNS / DHCP)
+913|3. Users (a person with one or more devices) - overrides the group rule
+914|Nothing for this selection yet. The router log is read every 2 minutes.
+915|?\nUse this for servers that scan on purpose (monitoring, controllers).
+916|Everybody gets full speed again right now.\nYour configuration is kept.
+917|No staff data in this period yet. History builds while the monitor runs.
+918|No suspicious behaviour detected from inside the network in this period.
+919|Staff devices, internet traffic around the clock, 24/7 ({from} to {to}).
+920|Everybody on the guest Wi-Fi gets the internet again without logging in.
+921|Packages (speed per visitor login; staff chooses one when issuing a code)
+922|Staff devices, internet traffic during working hours {hours} ({from} to {to}).
+923|Bandwidth control is not on the router yet: Configuration > Bandwidth control.
+924|Create a dedicated API user for me (uses an administrator login once; recommended)
+925|Ready. This will save the router, start collecting traffic and apply your choices:
+926|No audit entries in this period yet. Blocks, unblocks and speed limits are recorded here.
+927|Everything this program needs on the router, created in one place. Every object is tagged
+928|On a new router the API service may be off or blocked. Download the preparation script, open
+929|), then continue here. It enables the API service for this PC only and creates the API user.
+930|Live traffic, usage quotas, bandwidth control, guest Wi-Fi and security for MikroTik networks
+931|" from the list?\nIts collected history stays on disk (data\\routers) but is no longer shown.
+932|Remove ALL bandwidth-control queues from the router?\nYour configuration on this page is kept.
+933|Never see the portal (fixed devices on the guest network: access points, controllers, printers)
+934|= visitors, customers, residents' guests. Devices are grouped by the router network they are on.
+935|: r.limited ? ' has an individual limit ' : r.exempt ? ' exempt ' : r.pct >= 1 ? ' over quota ' : ''}
+936|Staff devices are merged by MAC address. Per-minute data (abuse check) covers at most the last 31 days.
+937|Each router keeps its own history. Passwords you save here are encrypted for this Windows user on this PC.
+938|What a phone sees (sample values). Branded with your organization name, in the chosen language and English.
+939|Applies to this device's internet traffic only, above the group rule. It ends by itself when the time is over.
+940|Everything on this page belongs to the router selected at the top; each router has its own configuration and history.
+941|دستگاه‌های کارکنان بر اساس آدرس MAC ادغام می‌شوند. داده دقیقه‌ای (بررسی سوءاستفاده) حداکثر ۳۱ روز اخیر را پوشش می‌دهد.
+942|A FastTrack rule is enabled on this router: fast-tracked traffic bypasses queues. Disable FastTrack before enforcing limits.
+943|Monitoring needs a RouterOS API user with read access. The monitor only reads (connection table, ARP, DHCP leases, addresses).
+944|A router configuration export (before-hotspot-...) is saved first. Undo everything with "Remove everything" on the Guest WiFi tab.
+945|Per-minute detail (used by the abuse section) is kept 31 days; daily totals are kept forever. Destination details are kept 120 days.
+946|No internet interface was found (no active default route). Traffic will be counted as internal until the router has a default route.
+947|When are your people at work? Usage outside these hours is reported separately. Hotels, hospitals and shops that never close choose 24/7.
+948|The hotspot stays disabled. Only objects tagged [mtc-hotspot] / named mtc-* are created or changed; other hotspot objects on the router stay.
+949|Blocking is not enabled on the router yet: open the Router setup tab and apply the "block" rules once. Until then the Block buttons will say so.
+950|Traffic is the Internet traffic measured on the router per device address (downloads and uploads), not counting traffic inside the hotel network.
+951|Destination types are an estimate based on well-known networks, reverse-DNS names and ports; many CDN / cloud addresses remain "Other / Unknown".
+952|Welcome! This guide connects Mikrotik Traffic Control to your MikroTik router in a few minutes. Nothing on the router is changed until you say so.
+953|to add the block rules, speed limits and the guest Wi-Fi portal on the router. Each change is previewed first and a backup is saved on the router.
+954|نوع مقاصد تخمینی است و بر اساس شبکه‌های شناخته‌شده، نام‌های DNS معکوس و پورت‌ها تعیین می‌شود؛ بسیاری از آدرس‌های CDN و ابری «سایر / نامشخص» می‌مانند.
+955|The device keeps its local network access, but every connection to the internet is dropped and open ones are cut. It unblocks itself when the time ends.
+956|Enter the address of your router. The program talks to it through the RouterOS API (port 8728); it never needs the router's Winbox or web password stored.
+957|The block rule is not on the router yet, so nobody can be blocked. Open the Router setup tab and apply the "block devices" rules once (a config export is taken first).
+958|The Abuse tab judges staff devices only inside these hours (a window that ends before it starts, like 22:00 to 06:00, runs overnight). Guests are always judged all day.
+959|Internet traffic only. "Busy minute" = a minute with at least the configured MB of traffic (streaming / downloading). Click a row for the device's graphs and destinations.
+960|Blocking internet addresses is not enabled on the router yet. Open the Router setup tab and apply the "block internet addresses" rules once (a config export is taken first).
+961|A router configuration export (before-qos-...) is saved first. Only queues named qos-* are touched. You can undo everything with "Remove all from router" or qos-rollback.ps1.
+962|= outside hosts our devices talked to. Owner data comes from RDAP / whois (cached 90 days); only the address being looked up is sent. Click a row or Whois for the full record.
+963|Disables the hotspot and removes every object this tab created (packages, walled garden, bypass bindings, guest codes). The old hotspot profile is restored. Settings here are kept.
+964|Destination types are an estimate from well-known networks, reverse-DNS names and ports. Many CDN / cloud addresses stay "Other / Unknown". Names fill in as addresses are looked up.
+965|= every outside address that appears in the router's log (failed logins, IPsec probes, firewall log rules; kept per day here even after the router's log rolls over, counted from the first time this version ran),
+966|A MAC whose second digit is 2, 6, A or E is a made-up address, not the one printed on the hardware. The device is real but cannot be recognised by its MAC: block it by IP or give it a fixed lease and name instead.
+967|Staff = devices on the office PC and staff WiFi networks, plus any device you mark as staff. Devices with the same MAC address are merged even if their IP changed. Click a row to see its days; double-click the name to rename.
+968|, so every new device is covered automatically. Individual devices or users can be given a different profile (above the group rule) manually or by auto-throttle. Nothing is enforced until you turn the master switch on and press Apply.
+969|From now on every guest device must log in (activation code) before it reaches the internet. Devices online right now lose the internet unless you grandfather them.\n\nGrandfather the devices online now for how many minutes? (0 = none)
+970|Every packet from this internet address to the router or the hotel network is dropped, and local devices can no longer reach it. Use it for scanners, brute-force attempts and other attackers. You can unblock it again in the Blocked tab.
+971|Every block, unblock and speed limit made from the dashboard is recorded with time, device, duration and note, plus changes made directly on the router (Winbox or script) and blocks that ended by timeout. The log is kept forever on this PC.
+972|Same device name with several MAC addresses, one after the other and never together: a phone with Private Wi-Fi address (iPhone / Android) that rotates its address. Tracking started when this version was installed, so rotation shows up over days and weeks.
+973|so it can be found and removed again. Changes are previewed first, a configuration backup is saved on the router before applying, and nothing else on the router is touched. You can also download the same changes as a RouterOS script (.rsc) and run it yourself.
+974|Found by protocol and well-known port (OpenVPN, WireGuard, IPsec, PPTP, L2TP, Tor, Shadowsocks...). Possible tunnel means nearly all of a busy devices traffic goes to one unknown address, which is how many VPN apps and proxies on port 443 look. VPNs hide what is inside, so only the volume is known.
+975|A blocked device keeps its local network access (printers, file server, DHCP) but cannot reach the internet. To block someone, use the Block button next to a device in Live, Abuse or Security, or in the device panel. Blocking works by address: a phone that changes its address needs a fixed (static) lease.
+976|Top staff and guest users, top destinations and types, abuse findings, security events, blocked and speed-limited devices, offline devices and the most important results. English, Persian (right-to-left) or both languages, with the hotel logo and brandmark and the Kish IT copyright. The report opens as a print-ready page: use
+977|Captive portal for visitors (hotel, restaurant, apartment building, office reception, school...): devices see your branded page and the walled-garden sites; the internet opens after login with an access code that the reception / staff issues, with a package (speed, number of devices) and an end time. Preparing creates only tagged objects and leaves the hotspot
+978|Block a single address or a range (/16 to /32). Everything from it to the router and the internal network is dropped, and local devices cannot reach it. Also available as a Block button next to outside addresses in Destinations, Security and the device panel. Never blockable: private addresses, this router's own public address, the ISP gateway and the DNS servers in use.
+979|(obsolete key 979)
+980|Counts INTERNET traffic only. When a device passes a limit it is slowed for the chosen time and then released by itself. After a limit, usage is counted again from the next day, so a device is not limited twice for the same traffic. Devices that already have an individual limit, belong to a user entry, are admin PCs or on the scan-ignore list are skipped. Needs the master switch on and the queues applied to the router.
+981|(obsolete key 981)

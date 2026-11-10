@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mikrotik Traffic Control - Network Report</title>
+<link rel="icon" type="image/svg+xml" href="assets/mtc-logo.svg">
+<script src="i18n.js"></script>
+<style>
+/* Vazirmatn (SIL OFL 1.1, see assets/fonts/Vazirmatn-OFL.txt): bundled so Persian prints the same on every PC */
+@font-face{font-family:"Vazirmatn";font-style:normal;font-weight:100 900;font-display:block;src:url(assets/fonts/vazirmatn-arabic-wght.woff2) format("woff2");
+  unicode-range:U+0600-06FF,U+0750-077F,U+0870-088E,U+0890-0891,U+0898-08E1,U+08E3-08FF,U+200C-200E,U+2010-2011,U+204F,U+2E41,U+FB50-FDFF,U+FE70-FE74,U+FE76-FEFC}
+@font-face{font-family:"Vazirmatn";font-style:normal;font-weight:100 900;font-display:block;src:url(assets/fonts/vazirmatn-latin-wght.woff2) format("woff2");
+  unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--ink:#1b2430;--mute:#5d6877;--line:#d9dee6;--down:#2a7de1;--up:#e0780a;--bad:#c0392b;--ok:#1f9d55;--accent:#b4531a;--soft:#f4f6f9}
+*{box-sizing:border-box}
+html,body{margin:0;background:#e6e9ee;color:var(--ink);font:10.5pt/1.5 "Vazirmatn","Segoe UI",Tahoma,Arial,sans-serif;-webkit-print-color-adjust:exact;print-color-adjust:exact;font-kerning:normal;text-rendering:optimizeLegibility}
+/* Persian typography: letters must stay joined (no letter-spacing, no forced uppercase), a little more line height, isolated Latin/numbers */
+html[dir=rtl] #paper,.fa{letter-spacing:0!important;text-transform:none!important;line-height:1.75}
+html[dir=rtl] #paper{font-size:11pt}
+html[dir=rtl] th{font-size:9.3pt;letter-spacing:0}
+html[dir=rtl] .kpi .l{letter-spacing:0;text-transform:none;font-size:9.3pt}
+bdi{unicode-bidi:isolate}
+.ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+/* ---------- toolbar (screen only) ---------- */
+.bar{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line);padding:8px 16px;display:flex;gap:12px;flex-wrap:wrap;align-items:center;font-size:13px;font-family:"Segoe UI",Tahoma,sans-serif;direction:ltr}
+.bar select,.bar input[type=date]{border:1px solid var(--line);border-radius:7px;padding:4px 8px;font:inherit}
+.bar button{border:1px solid var(--accent);background:var(--accent);color:#fff;border-radius:8px;padding:6px 16px;font:inherit;font-weight:600;cursor:pointer}
+.bar label{display:inline-flex;align-items:center;gap:4px;color:var(--mute)}
+.bar .sp{flex:1}
+/* ---------- paper ---------- */
+#paper{position:relative;width:210mm;min-height:297mm;margin:14px auto 40px;background:#fff;padding:11mm 11mm 20mm;box-shadow:0 4px 24px rgba(0,0,0,.18)}
+.wm{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);width:125mm;opacity:.045;z-index:0;pointer-events:none}
+#paper>*{position:relative;z-index:1}
+.head{display:flex;align-items:center;justify-content:space-between;gap:10mm;border-bottom:2.5px solid var(--accent);padding-bottom:5mm;margin-bottom:5mm}
+.head img.logo{height:23mm;width:auto}
+.head .ttl{text-align:end;flex:1}
+.head h1{margin:0;font-size:17pt;line-height:1.25}
+.head .sub{color:var(--mute);font-size:10pt}
+.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:2mm 6mm;margin-bottom:5mm;font-size:9.5pt}
+.meta div span{color:var(--mute);display:block;font-size:8.5pt}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:3mm;margin-bottom:5mm}
+.kpi{border:1px solid var(--line);border-radius:2.5mm;padding:2.5mm 3mm;background:var(--soft);break-inside:avoid}
+.kpi .l{font-size:8.5pt;color:var(--mute);text-transform:uppercase;letter-spacing:.2px}
+.kpi .v{font-size:15pt;font-weight:700;line-height:1.2}
+.kpi .s{font-size:8.5pt;color:var(--mute)}
+h2{font-size:12.5pt;margin:6mm 0 2.5mm;padding-bottom:1.2mm;border-bottom:1px solid var(--line);color:var(--accent);break-after:avoid}
+h2 .fa{font-weight:600}
+.find{margin:0;padding-inline-start:5mm}
+.find li{margin:1.4mm 0}
+.find .fa{display:block;color:#4a5564;margin-top:.4mm}
+table{width:100%;border-collapse:collapse;font-size:9pt}
+th{background:var(--soft);font-weight:600;font-size:8.3pt;color:var(--mute);text-align:start;padding:1.6mm 1.8mm;border-bottom:1px solid var(--line)}
+td{padding:1.4mm 1.8mm;border-bottom:1px solid #edf0f4;vertical-align:top}
+thead{display:table-header-group} tr{break-inside:avoid}
+td.n,th.n{text-align:end;font-variant-numeric:tabular-nums;white-space:nowrap}
+.dn{color:var(--down)} .upc{color:var(--up)}
+.bar2{height:2.4mm;background:#e8ecf1;border-radius:1.2mm;overflow:hidden;display:flex;min-width:22mm}
+.bar2 i{display:block;height:100%}
+.chip{display:inline-block;border-radius:2mm;padding:.2mm 1.8mm;font-size:8pt;font-weight:600;color:#fff;background:var(--mute)}
+.chip.high{background:var(--bad)} .chip.medium{background:var(--up)} .chip.ok{background:var(--ok)}
+.reason{display:block;font-size:8.3pt;color:#3a4350}
+.sub2{color:var(--mute);font-size:8.3pt}
+.note{font-size:8.6pt;color:var(--mute);margin-top:2mm}
+.empty{color:var(--mute);padding:3mm 0;font-style:italic}
+.tb{display:flex;align-items:center;gap:2mm;margin:1mm 0;font-size:9pt;break-inside:avoid}
+.tb .nm{width:46mm;flex:none}.tb .v{width:36mm;flex:none;text-align:end;color:var(--mute);font-variant-numeric:tabular-nums}
+.tb .bar2{flex:1}
+.fa{font-family:"Vazirmatn","Segoe UI",Tahoma,sans-serif}
+.bi .fa{display:block;color:#4a5564;font-size:.93em}
+h2.bi .fa{display:inline;color:inherit;margin-inline-start:2mm}
+h2.bi .fa::before{content:"/ ";color:#9aa4b2}
+.kpi .l.bi .fa,th.bi .fa{display:block}
+.foot{margin-top:9mm;padding-top:2.5mm;border-top:1px solid var(--line);display:flex;align-items:center;gap:3mm;color:var(--mute);font-size:8.6pt;direction:ltr}
+.foot img{height:7mm;width:auto}.foot .sp{flex:1}
+.foot a{color:inherit;text-decoration:none}
+html[dir=rtl] #paper{direction:rtl}
+html[dir=rtl] .head .ttl{text-align:start}
+html[dir=rtl] .tb .v{text-align:start}
+.err{max-width:210mm;margin:30px auto;background:#fff;border:1px solid var(--bad);border-radius:8px;padding:14px 18px;color:var(--bad)}
+/* ---------- print ---------- */
+@page{size:A4;margin:11mm 11mm 18mm}
+@media print{
+  html,body{background:#fff}
+  .noprint,.bar{display:none!important}
+  #paper{width:auto;min-height:0;margin:0;padding:0;box-shadow:none}
+  .foot{break-inside:avoid}
+  .wm{display:block}
+  h2{break-after:avoid}
+  .sec{break-inside:auto}
+  .kpis,.find,.meta{break-inside:avoid}
+}
+/* per-page footer (copyright + page numbers) is written by script into a second style block, see init() */
+</style>
+</head>
+<body>
+<div class="bar noprint" id="bar">
+  <b>Report</b>
+  <label>Router <select id="c-router"></select></label>
+  <label>Period <select id="c-period"><option value="today">Today</option><option value="yesterday">Yesterday</option><option value="week">This week</option><option value="7d">Last 7 days</option><option value="month">This month</option><option value="lmonth">Last month</option><option value="30d">Last 30 days</option><option value="custom">Custom...</option></select></label>
+  <span id="c-custom" hidden><input type="date" id="c-from"> - <input type="date" id="c-to"></span>
+  <label>Language <select id="c-lang"><option value="en">English</option><option value="fa">&#1601;&#1575;&#1585;&#1587;&#1740;</option><option value="ar">العربية</option><option value="ru">Русский</option><option value="zh">中文</option><option value="both">English + &#1601;&#1575;&#1585;&#1587;&#1740;</option></select></label>
+  <span class="sp"></span>
+  <span id="c-secs"></span>
+  <button id="c-print">Print / Save as PDF</button>
+</div>
+<img class="wm" src="assets/mtc-logo.svg" alt="">
+<main id="paper"><div class="empty">Loading the report...</div></main>
+
+<script>
+'use strict';
+const $ = (s) => document.querySelector(s);
+const qs = new URLSearchParams(location.search);
+const ST = { router: qs.get('router') || '', lang: ['en', 'fa', 'ar', 'ru', 'zh', 'both'].includes(qs.get('lang')) ? qs.get('lang') : (qs.get('lang') === null ? ((window.I18N && I18N.guess()) || 'en') : 'en'), period: qs.get('period') || (qs.get('from') ? 'custom' : '7d'), from: qs.get('from') || '', to: qs.get('to') || '',
+  sections: new Set((qs.get('sec') || 'summary,staff,guests,dest,abuse,security,blocked,offline').split(',')) };
+let ROUTERS = [], R = null;
+const ORG = { name: 'Mikrotik Traffic Control', logo: 'assets/mtc-logo.svg' };
+
+// ------------------------------------------------------------------ texts [English, Persian]
+const D = {
+  title: ['Network Usage & Security Report', 'گزارش مصرف و امنیت شبکه'], hotel: ['Mikrotik Traffic Control', 'Mikrotik Traffic Control'],
+  router: ['Router', 'روتر'], period: ['Period', 'بازه زمانی'], generated: ['Generated', 'زمان تهیه گزارش'],
+  down: ['Internet downloaded', 'دانلود اینترنت'], up: ['Internet uploaded', 'آپلود اینترنت'], active: ['Active devices', 'دستگاه‌های فعال'], peak: ['Peak concurrent connections', 'بیشینه اتصال همزمان'],
+  blockedNow: ['Blocked now', 'مسدود شده در حال حاضر'], secEv: ['Security events', 'رویدادهای امنیتی'], offW: ['Offline watched devices', 'دستگاه‌های آفلاین تحت نظر'], hosts: ['Different destinations', 'مقصدهای متفاوت'],
+  staffW: ['staff', 'کارکنان'], guestsW: ['guests', 'مهمانان'], days: ['Days', 'روز'],
+  s_find: ['Most important results', 'مهم‌ترین نتایج'], s_staff: ['Top staff users', 'پرمصرف‌ترین کارکنان'], s_guests: ['Top guest users', 'پرمصرف‌ترین مهمانان'], s_upl: ['Top uploaders', 'بیشترین آپلود'],
+  s_types: ['Destination types', 'نوع مقاصد اینترنتی'], s_dest: ['Top destinations (most interactive IPs)', 'پرترافیک‌ترین مقاصد (آی‌پی‌ها)'], s_abS: ['Abuse check - staff (working hours)', 'بررسی سوءاستفاده - کارکنان (ساعات کاری)'],
+  s_abG: ['Abuse check - guests', 'بررسی سوءاستفاده - مهمانان'], s_sec: ['Security events', 'رویدادهای امنیتی'], s_blk: ['Blocked devices', 'دستگاه‌های مسدود شده'], s_aud: ['Audit trail (blocks, unblocks, limits)', 'تاریخچه اقدامات (مسدودسازی، رفع مسدودی، محدودیت)'],
+  s_off: ['Offline devices (watched)', 'دستگاه‌های آفلاین (تحت نظر)'], s_notes: ['Notes', 'توضیحات'],
+  c_user: ['User / device', 'کاربر / دستگاه'], c_net: ['Network', 'شبکه'], c_dl: ['Download', 'دانلود'], c_ul: ['Upload', 'آپلود'], c_tot: ['Total', 'مجموع'], c_share: ['Share', 'سهم'], c_dst: ['Destination', 'مقصد'],
+  c_org: ['Organisation', 'سازمان'], c_type: ['Type', 'نوع'], c_dev: ['Devices', 'دستگاه'], c_why: ['Why flagged', 'دلیل'], c_busy: ['Busy min', 'دقیقه پرمصرف'], c_peak: ['Peak', 'اوج'], c_when: ['When', 'زمان'],
+  c_act: ['Action', 'اقدام'], c_det: ['Details', 'جزئیات'], c_by: ['By', 'توسط'], c_rem: ['Time left', 'زمان باقی‌مانده'], c_since: ['Offline since', 'آفلاین از'], c_grp: ['Group', 'گروه'], c_sev: ['Severity', 'شدت'], c_kind: ['What', 'نوع رویداد'], c_off: ['Off-hours', 'خارج از ساعت کاری'],
+  none: ['Nothing to report for this period.', 'برای این بازه موردی وجود ندارد.'], noneAb: ['Nobody is over the limits.', 'هیچ موردی از حد مجاز فراتر نرفته است.'],
+  sev_high: ['High', 'بالا'], sev_medium: ['Medium', 'متوسط'], sev_low: ['Low', 'کم'],
+  routerLists: ['Outside attackers caught by the router traps', 'مهاجمان خارجی ثبت‌شده توسط تله‌های روتر'], ps: ['port scanners', 'اسکنر پورت'], ssh: ['SSH brute-force', 'حدس رمز SSH'], tel: ['telnet brute-force', 'حدس رمز تلنت'],
+  working: ['Working hours', 'ساعات کاری'], median: ['typical active device', 'دستگاه فعال معمول'],
+  unnamed: ['(unnamed)', '(بدون نام)'], router_: ['router', 'روتر'],
+  n1: ['Traffic is the Internet traffic measured on the router per device address (downloads and uploads), not counting traffic inside the internal network.', 'ترافیک، مصرف اینترنت هر دستگاه است که روی روتر اندازه‌گیری می‌شود (دانلود و آپلود) و ترافیک داخلی شبکه داخلی را شامل نمی‌شود.'],
+  n2: ['Destination types are an estimate based on well-known networks, reverse-DNS names and ports; many CDN / cloud addresses remain "Other / Unknown".', 'نوع مقاصد تخمینی است و بر اساس شبکه‌های شناخته‌شده، نام‌های DNS معکوس و پورت‌ها تعیین می‌شود؛ بسیاری از آدرس‌های CDN و ابری «سایر / نامشخص» می‌مانند.'],
+  n3: ['Staff devices are merged by MAC address. Per-minute data (abuse check) covers at most the last 31 days.', 'دستگاه‌های کارکنان بر اساس آدرس MAC ادغام می‌شوند. داده دقیقه‌ای (بررسی سوءاستفاده) حداکثر ۳۱ روز اخیر را پوشش می‌دهد.'],
+  copy: ['Copyright', 'کپی‌رایت'],
+};
+const SECN = { summary: ['Summary & key results', 'خلاصه و نتایج کلیدی'], staff: ['Top staff', 'کارکنان'], guests: ['Top guests', 'مهمانان'], dest: ['Destinations', 'مقاصد'], abuse: ['Abuse', 'سوءاستفاده'], security: ['Security', 'امنیت'], blocked: ['Blocked / audit', 'مسدودی / تاریخچه'], offline: ['Offline', 'آفلاین'] };
+const TYPE_FA = { 'Video streaming': 'پخش ویدیو', 'Social media': 'شبکه‌های اجتماعی', Messaging: 'پیام‌رسان', 'Google / YouTube': 'گوگل / یوتیوب', 'Microsoft / Updates': 'مایکروسافت / به‌روزرسانی', Apple: 'اپل', 'CDN / Cloud': 'CDN / ابری', 'Hosting / VPS': 'هاستینگ / VPS', 'Video calls / VoIP': 'تماس تصویری / VoIP', Mail: 'ایمیل', DNS: 'DNS', Gaming: 'بازی', 'Torrent / P2P': 'تورنت / P2P', 'VPN / Tunnel': 'VPN / تونل', 'Remote access': 'دسترسی از راه دور', 'IoT / MQTT': 'اینترنت اشیا', 'Iran (.ir)': 'ایران (\u200E.ir\u200E)', 'Local network': 'شبکه محلی', 'Other / Unknown': 'سایر / نامشخص' };
+const KIND = { scan: ['Port / host scan', 'اسکن پورت / میزبان'], 'lan-scan': ['Scanning the local network', 'اسکن شبکه داخلی'], 'lan-sweep': ['Contacting many internal hosts', 'ارتباط با میزبان‌های داخلی متعدد'], 'brute-force': ['Brute-force / flood pattern', 'الگوی حدس رمز / سیل اتصال'],
+  'many-connections': ['Very many connections', 'تعداد اتصال بسیار زیاد'], 'router-probe': ['Probing router management', 'تلاش برای دسترسی به مدیریت روتر'], 'router-login-fail': ['Failed router logins', 'ورود ناموفق به روتر'] };
+const ACT = { block: ['Blocked', 'مسدود شد'], unblock: ['Unblocked', 'رفع مسدودی'], 'unblock-auto': ['Unblocked (timeout / router)', 'رفع مسدودی (پایان زمان / روتر)'], 'block-external': ['Blocked on the router', 'مسدود شده روی روتر'],
+  ipblock: ['Internet address blocked', 'مسدودسازی آدرس اینترنتی'], ipunblock: ['Internet address unblocked', 'رفع مسدودی آدرس اینترنتی'], 'ipblock-external': ['Address blocked on the router', 'آدرس مسدود شده روی روتر'], 'ipunblock-auto': ['Address unblocked (timeout / router)', 'رفع مسدودی آدرس (پایان زمان / روتر)'], 'qos-limit': ['Speed limited', 'محدودیت سرعت'], 'qos-auto-limit': ['Auto-throttled', 'محدودیت خودکار'], 'qos-quota-limit': ['Usage quota passed - limited', 'محدودیت به‌علت عبور از سهمیه مصرف'], 'qos-unlimit': ['Limit removed', 'رفع محدودیت'], 'qos-apply': ['Bandwidth control applied', 'اعمال کنترل پهنای باند'], 'qos-off': ['Limits disabled', 'غیرفعال‌سازی محدودیت‌ها'], 'qos-remove': ['Bandwidth control removed', 'حذف کنترل پهنای باند'] };
+const GRP = { Staff: ['Staff', 'کارکنان'], Guest: ['Guest', 'مهمان'], AP: ['Access point', 'اکسس‌پوینت'], 'IoT controller': ['IoT controller', 'کنترلر اینترنت اشیا'], Server: ['Server', 'سرور'], CCTV: ['CCTV', 'دوربین'], 'Door lock': ['Door lock', 'قفل در'], BMS: ['BMS', 'BMS'], 'VoIP phone': ['VoIP phone', 'تلفن VoIP'], 'IPTV box': ['IPTV box', 'IPTV'], Other: ['Other', 'سایر'] };
+
+const lang = () => ST.lang;
+const OTHER = ['ar', 'ru', 'zh'], RTLL = ['fa', 'ar'];
+const LOC = () => (ST.lang === 'fa' ? 'fa-IR' : ST.lang === 'ar' ? 'ar-u-nu-latn' : ST.lang === 'ru' ? 'ru-RU' : ST.lang === 'zh' ? 'zh-CN' : 'en-US');
+const nf = (n, d) => new Intl.NumberFormat(LOC(), { maximumFractionDigits: d == null ? 1 : d }).format(n);
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+// translated text: single language, or both (headings inline with "/", table headers stacked)
+function T(pair, mode) { const [e, f] = Array.isArray(pair) ? pair : [pair, pair];
+  if (ST.lang === 'en') return esc(e); if (ST.lang === 'fa') return esc(f); if (OTHER.includes(ST.lang)) return esc(window.__ ? __(e) : e);
+  return `<span class="en">${esc(e)}</span><span class="fa" dir="rtl">${esc(f)}</span>`; }
+const tk = (k) => T(D[k]);
+const tKind = (k) => T(KIND[k] || [k, k]), tAct = (a) => T(ACT[a] || [a, a]), tGrp = (g) => T(GRP[g] || [g, g]), tType = (t) => T([t, TYPE_FA[t] || t]);
+function bytes(b) {
+  const u = ST.lang === 'fa' ? ['بایت', 'کیلوبایت', 'مگابایت', 'گیگابایت', 'ترابایت'] : ['B', 'KB', 'MB', 'GB', 'TB'];
+  let i = 0, n = Number(b) || 0; while (n >= 1024 && i < 4) { n /= 1024; i++; }
+  return nf(n, n < 10 && i > 0 ? 2 : n < 100 && i > 0 ? 1 : 0) + ' ' + u[i];
+}
+function mbps(bps) { const v = (Number(bps) || 0) * 8 / 1e6; return nf(v, v < 10 ? 2 : 1) + ' ' + (ST.lang === 'fa' ? 'مگابیت/ث' : 'Mbps'); }
+function dur(s) { s = Math.max(0, Math.floor(s)); const f = ST.lang === 'fa';
+  if (s < 90) return nf(s, 0) + (f ? ' ثانیه' : ' s'); if (s < 5400) return nf(Math.round(s / 60), 0) + (f ? ' دقیقه' : ' min'); if (s < 172800) return nf(s / 3600, 1) + (f ? ' ساعت' : ' h'); return nf(Math.round(s / 86400), 0) + (f ? ' روز' : ' days'); }
+const gdate = (t) => { const d = new Date(t * 1000), p = (n) => String(n).padStart(2, '0'); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`; };
+const gtime = (t) => { const d = new Date(t * 1000), p = (n) => String(n).padStart(2, '0'); return `${gdate(t)} ${p(d.getHours())}:${p(d.getMinutes())}`; };
+const jdate = (t, time) => new Intl.DateTimeFormat('fa-IR-u-ca-persian', time ? { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' } : { year: 'numeric', month: 'long', day: 'numeric' }).format(new Date(t * 1000));
+const dt = (t, time) => (ST.lang === 'en' || OTHER.includes(ST.lang) ? (time ? gtime(t) : gdate(t)) : ST.lang === 'fa' ? jdate(t, time) : (time ? gtime(t) : gdate(t)) + ' (<span dir="rtl">' + jdate(t, false) + '</span>)');
+const dayTs = (s) => { const [y, m, d] = s.split('-').map(Number); return Math.floor(new Date(y, m - 1, d, 12).getTime() / 1000); };
+const share = (a, b, c) => `<div class="bar2"><i style="width:${(a * 100).toFixed(1)}%;background:var(--down)"></i><i style="width:${(b * 100).toFixed(1)}%;background:var(--up)"></i></div>`;
+
+// reasons come from the server in English: translate the known patterns for the Persian output
+function reason(s) {
+  if (ST.lang === 'en') return esc(s);
+  const fmtNum = (x) => String(x).replace(/\d+(?:\.\d+)?/g, (m) => nf(Number(m), m.includes('.') ? 1 : 0));
+  const rules = [
+    [/^(.+) per working day \(limit (.+) GB\)$/, (m) => `${m[1]} در هر روز کاری (حد مجاز ${m[2]} گیگابایت)`],
+    [/^(\d+) busy minutes per working day \(>= (.+) MB\/min, limit (\d+)\)$/, (m) => `${m[1]} دقیقه پرمصرف در هر روز کاری (حداقل ${m[2]} مگابایت در دقیقه، حد مجاز ${m[3]})`],
+    [/^(.+) in one day \(limit (.+) GB\)$/, (m) => `${m[1]} در یک روز (حد مجاز ${m[2]} گیگابایت)`],
+    [/^(\d+) busy minutes per day \(streaming \/ downloading all day\)$/, (m) => `${m[1]} دقیقه پرمصرف در روز (پخش یا دانلود مداوم)`],
+    [/^peak (\d+) concurrent connections \(limit (\d+)\): torrent \/ flood pattern$/, (m) => `اوج ${m[1]} اتصال همزمان (حد مجاز ${m[2]}): الگوی تورنت یا سیل اتصال`],
+    [/^heavy upload: (.+) per day \(limit (.+) GB\)$/, (m) => `آپلود سنگین: ${m[1]} در روز (حد مجاز ${m[2]} گیگابایت)`],
+    [/^(.+)x the (staff|guest) median \((.+)\)$/, (m) => `${m[1]} برابر ${m[2] === 'staff' ? 'میانه کارکنان' : 'میانه مهمانان'} (${m[3]})`],
+  ];
+  const fa = (x) => String(x).replace(/(\d+(?:\.\d+)?) (MB|GB)/g, (_, n, u) => `${nf(Number(n), n.includes('.') ? 1 : 0)} ${u === 'GB' ? 'گیگابایت' : 'مگابایت'}`);
+  for (const [re, f] of rules) { const m = re.exec(s); if (m) { const t = f(m.map((x, i) => (i ? fa(x) : x))); return esc(ST.lang === 'both' ? s : fmtNum(t)) + (ST.lang === 'both' ? `<span class="fa" dir="rtl">${esc(fmtNum(t))}</span>` : ''); } }
+  return esc(s);
+}
+
+// ------------------------------------------------------------------ rendering
+const th = (k, cls) => `<th class="${cls || ''} ${ST.lang === 'both' ? 'bi' : ''}">${tk(k)}</th>`;
+const h2 = (k) => `<h2 class="${ST.lang === 'both' ? 'bi' : ''}">${tk(k)}</h2>`;
+const nm = (r) => `<b>${r.name ? '<bdi>' + esc(r.name) + '</bdi>' : T(D.unnamed)}</b>`;
+const ips = (r) => `<span class="sub2 ltr">${esc((r.ips ? r.ips.join(', ') : r.ip) || '')}</span>`;
+const ipx = (s) => `<span class="ltr">${esc(s)}</span>`;           // addresses stay left-to-right inside Persian text
+
+function renderAll() {
+  const el = $('#paper'); document.documentElement.lang = ST.lang === 'both' ? 'en' : ST.lang; document.documentElement.dir = RTLL.includes(ST.lang) ? 'rtl' : 'ltr';
+  if (!R) return;
+  const rt = ROUTERS.find((x) => x.id === ST.router) || {}, tot = R.totals, S = ST.sections, out = [];
+  document.title = `${D.hotel[0]} - ${D.title[0]} - ${R.from}${R.from !== R.to ? ' - ' + R.to : ''}`;
+  out.push(`<div class="head"><img class="logo" src="${ORG.logo}" alt=""><div class="ttl"><h1>${ST.lang === 'both' ? `${esc(D.hotel[0])} <span class="fa" dir="rtl" style="display:inline;margin-inline-start:2mm">${esc(D.hotel[1])}</span>` : T(D.hotel)}</h1><div class="sub">${ST.lang === 'both' ? `${esc(D.title[0])} <span class="fa" dir="rtl" style="display:inline;margin-inline-start:2mm">/ ${esc(D.title[1])}</span>` : T(D.title)}</div></div></div>`);
+  out.push(`<div class="meta"><div><span>${tk('router')}</span><b>${esc(rt.name || R.host)}</b> <small>${esc(R.host)}</small></div><div><span>${tk('period')}</span><b>${dt(dayTs(R.from))}${R.from !== R.to ? ' &ndash; ' + dt(dayTs(R.to)) : ''}</b> <small>(${nf(R.days, 0)} ${ST.lang === 'fa' ? 'روز' : 'd'})</small></div><div><span>${tk('generated')}</span><b>${dt(R.generated, true)}</b></div></div>`);
+  if (S.has('summary')) {
+    const kpi = (k, v, s) => `<div class="kpi"><div class="l ${ST.lang === 'both' ? 'bi' : ''}">${tk(k)}</div><div class="v">${v}</div><div class="s">${s || '&nbsp;'}</div></div>`;
+    out.push('<div class="kpis">' + kpi('down', bytes(tot.down), '') + kpi('up', bytes(tot.up), '') + kpi('active', nf(tot.active, 0), `${nf(tot.staff, 0)} ${T(D.staffW)} / ${nf(tot.guest, 0)} ${T(D.guestsW)}`) + kpi('peak', nf(tot.peakConns, 0), '')
+      + kpi('blockedNow', nf(R.blockedNow.length, 0), '') + kpi('secEv', nf(R.security.total, 0), '') + kpi('offW', nf(R.offlineTotal, 0), '') + kpi('hosts', nf(R.types.reduce((s, t) => s + t.remotes, 0), 0), '') + '</div>');
+    out.push(`<div class="sec">${h2('s_find')}<ul class="find">${findings().map((f) => `<li>${f}</li>`).join('')}</ul></div>`);
+  }
+  if (S.has('staff')) out.push(`<div class="sec">${h2('s_staff')}${userTable(R.topStaff, true)}</div>`);
+  if (S.has('guests')) out.push(`<div class="sec">${h2('s_guests')}${userTable(R.topGuests, false)}${R.topUpload.length ? h2('s_upl') + uploadTable(R.topUpload) : ''}</div>`);
+  if (S.has('dest')) out.push(`<div class="sec">${h2('s_types')}${typeBars()}${h2('s_dest')}${destTable()}</div>`);
+  if (S.has('abuse')) out.push(`<div class="sec">${h2('s_abS')}${abuseTable(R.abuse.staff, true)}${h2('s_abG')}${abuseTable(R.abuse.guest, false)}</div>`);
+  if (S.has('security')) out.push(`<div class="sec">${h2('s_sec')}${securityBlock()}</div>`);
+  if (S.has('blocked')) out.push(`<div class="sec">${h2('s_blk')}${blockedTable()}${h2('s_aud')}${auditTable()}</div>`);
+  if (S.has('offline')) out.push(`<div class="sec">${h2('s_off')}${offlineTable()}</div>`);
+  out.push(`<div class="sec">${h2('s_notes')}<div class="note">${tk('n1')}<br>${tk('n2')}<br>${tk('n3')}</div></div>`);
+  out.push(`<div class="foot"><img src="assets/mtc-logo.svg" alt=""><span>${esc(D.hotel[0])} &middot; ${esc(D.title[0])}</span><span class="sp"></span><span>&copy; ${new Date().getFullYear()} <a href="https://kish-it.com">Kish IT</a> &middot; <a href="https://kish-it.com">kish-it.com</a></span></div>`);
+  el.innerHTML = out.join('');
+}
+
+function findings() {
+  const f = [], tot = R.totals, num = (n) => nf(n, 0);
+  const both = ST.lang === 'both', one = (en, fa) => (ST.lang === 'fa' ? fa : both ? `${en}<span class="fa" dir="rtl">${fa}</span>` : en);
+  f.push(one(`Total Internet traffic: <b>${bytes(tot.down)}</b> downloaded and <b>${bytes(tot.up)}</b> uploaded by <b>${num(tot.active)}</b> devices (${num(tot.staff)} staff, ${num(tot.guest)} guests).`,
+    `مجموع ترافیک اینترنت: <b>${bytes(tot.down)}</b> دانلود و <b>${bytes(tot.up)}</b> آپلود توسط <b>${num(tot.active)}</b> دستگاه (${num(tot.staff)} کارمند، ${num(tot.guest)} مهمان).`));
+  const s = R.topStaff[0], g = R.topGuests[0];
+  if (s) f.push(one(`Top staff user: <b>${esc(s.name || s.ips[0])}</b> with ${bytes(s.total)} (${nf(s.total / ((R.topStaff.reduce((a, x) => a + x.total, 0)) || 1) * 100, 0)}% of the top ${num(R.topStaff.length)} staff).`,
+    `پرمصرف‌ترین کارمند: <b>${esc(s.name || s.ips[0])}</b> با ${bytes(s.total)} (${nf(s.total / ((R.topStaff.reduce((a, x) => a + x.total, 0)) || 1) * 100, 0)}٪ از ${num(R.topStaff.length)} کارمند برتر).`));
+  if (g) f.push(one(`Top guest device: <b>${esc(g.name || g.ip)}</b> with ${bytes(g.total)}.`, `پرمصرف‌ترین دستگاه مهمان: <b>${esc(g.name || g.ip)}</b> با ${bytes(g.total)}.`));
+  const ty = R.types[0], tt = R.types.reduce((a, x) => a + x.up + x.down, 0) || 1;
+  if (ty) f.push(one(`Largest destination type: <b>${esc(ty.type)}</b> (${nf((ty.up + ty.down) / tt * 100, 0)}% of traffic).`, `بیشترین نوع مقصد: <b>${esc(TYPE_FA[ty.type] || ty.type)}</b> (${nf((ty.up + ty.down) / tt * 100, 0)}٪ ترافیک).`));
+  const ab = R.abuse.staff.flagged.length, ag = R.abuse.guest.flagged.length;
+  f.push(one(`Abuse check: <b>${num(ab)}</b> staff and <b>${num(ag)}</b> guest devices over the limits.${ag ? ' Highest: <b>' + esc(R.abuse.guest.flagged[0].name || R.abuse.guest.flagged[0].ip) + '</b>.' : ''}`,
+    `بررسی سوءاستفاده: <b>${num(ab)}</b> دستگاه کارمند و <b>${num(ag)}</b> دستگاه مهمان از حد مجاز فراتر رفته‌اند.${ag ? ' بیشترین: <b>' + esc(R.abuse.guest.flagged[0].name || R.abuse.guest.flagged[0].ip) + '</b>.' : ''}`));
+  const hi = R.security.events.filter((e) => e.sev === 'high').length;
+  f.push(one(`Security: <b>${num(R.security.total)}</b> events from inside the network (${num(hi)} high). The router traps hold <b>${num(Object.values(R.security.routerLists).reduce((a, b) => a + b, 0))}</b> outside attackers.`,
+    `امنیت: <b>${num(R.security.total)}</b> رویداد از داخل شبکه (${num(hi)} مورد با شدت بالا). تله‌های روتر <b>${num(Object.values(R.security.routerLists).reduce((a, b) => a + b, 0))}</b> مهاجم خارجی را ثبت کرده‌اند.`));
+  const blk = R.audit.filter((a) => a.action === 'block' || a.action === 'block-external').length, lim = R.audit.filter((a) => a.action === 'qos-limit' || a.action === 'qos-auto-limit' || a.action === 'qos-quota-limit').length;
+  f.push(one(`Control actions: <b>${num(blk)}</b> blocks and <b>${num(lim)}</b> speed limits in this period; <b>${num(R.blockedNow.length)}</b> device(s) blocked now.`,
+    `اقدامات کنترلی: <b>${num(blk)}</b> مسدودسازی و <b>${num(lim)}</b> محدودیت سرعت در این بازه؛ <b>${num(R.blockedNow.length)}</b> دستگاه هم‌اکنون مسدود است.`));
+  f.push(one(`Offline: <b>${num(R.offlineTotal)}</b> watched device(s) are offline now.`, `آفلاین: <b>${num(R.offlineTotal)}</b> دستگاه تحت نظر هم‌اکنون آفلاین است.`));
+  return f;
+}
+function userTable(rows, merged) {
+  if (!rows.length) return `<div class="empty">${tk('none')}</div>`;
+  const mx = rows[0].total || 1;
+  return `<table><thead><tr>${th('c_user')}${th('c_net')}${th('days', 'n')}${th('c_dl', 'n')}${th('c_ul', 'n')}${th('c_tot', 'n')}${th('c_share')}</tr></thead><tbody>` + rows.map((r, i) => `<tr><td>${nf(i + 1, 0)}. ${nm(r)}<br>${ips(r)}</td><td class="sub2">${ipx(r.vlan || '')}</td><td class="n">${nf(r.days, 0)}</td><td class="n dn">${bytes(r.down)}</td><td class="n upc">${bytes(r.up)}</td><td class="n"><b>${bytes(r.total)}</b></td><td>${share(r.down / mx, r.up / mx)}</td></tr>`).join('') + '</tbody></table>';
+}
+function uploadTable(rows) {
+  const mx = rows[0].up || 1;
+  return `<table><thead><tr>${th('c_user')}${th('c_grp')}${th('c_ul', 'n')}${th('c_share')}</tr></thead><tbody>` + rows.map((r, i) => `<tr><td>${nf(i + 1, 0)}. ${nm(r)} <span class="sub2">${ipx(r.ip)}</span></td><td class="sub2">${tGrp(r.group === 'staff' ? 'Staff' : r.group === 'guest' ? 'Guest' : 'Other')}</td><td class="n upc"><b>${bytes(r.up)}</b></td><td>${share(0, r.up / mx)}</td></tr>`).join('') + '</tbody></table>';
+}
+function typeBars() {
+  if (!R.types.length) return `<div class="empty">${tk('none')}</div>`;
+  const tt = R.types.reduce((a, x) => a + x.up + x.down, 0) || 1, mx = R.types[0].up + R.types[0].down || 1;
+  return R.types.map((t) => `<div class="tb"><span class="nm">${tType(t.type)}</span>${share((t.down) / mx, (t.up) / mx)}<span class="v">${bytes(t.up + t.down)} &middot; ${nf((t.up + t.down) / tt * 100, 0)}${ST.lang === 'fa' ? '٪' : '%'}</span></div>`).join('');
+}
+function destTable() {
+  if (!R.remotes.length) return `<div class="empty">${tk('none')}</div>`;
+  return `<table><thead><tr>${th('c_dst')}${th('c_org')}${th('c_type')}${th('c_dev', 'n')}${th('c_dl', 'n')}${th('c_ul', 'n')}</tr></thead><tbody>` + R.remotes.map((r) => `<tr><td><b>${ipx(r.ip)}</b><br><span class="sub2"><bdi>${esc(r.name || '')}</bdi></span></td><td class="sub2">${esc(r.org || '')}</td><td>${tType(r.type)}</td><td class="n">${nf(r.devices, 0)}</td><td class="n dn">${bytes(r.down)}</td><td class="n upc">${bytes(r.up)}</td></tr>`).join('') + '</tbody></table>';
+}
+function abuseTable(a, win) {
+  const info = win ? `<div class="note">${tk('working')}: ${esc(R.abuse.config.start)}-${esc(R.abuse.config.end)} &middot; ${nf(a.checked, 0)} ${ST.lang === 'fa' ? 'دستگاه بررسی شد' : 'devices checked'} &middot; ${T(D.median)}: ${bytes(a.median)}</div>` : `<div class="note">${nf(a.checked, 0)} ${ST.lang === 'fa' ? 'دستگاه بررسی شد' : 'devices checked'} &middot; ${T(D.median)}: ${bytes(a.median)}</div>`;
+  if (!a.flagged.length) return info + `<div class="empty">${tk('noneAb')}</div>`;
+  return info + `<table><thead><tr>${th('c_user')}${th('c_tot', 'n')}${th('c_busy', 'n')}${th('c_peak', 'n')}${th('c_why')}</tr></thead><tbody>` + a.flagged.map((r) => `<tr><td>${nm(r)}<br><span class="sub2">${ipx(r.ip)} ${ipx(r.vlan || '')}</span></td><td class="n"><b>${bytes(r.total)}</b></td><td class="n">${nf(r.busy, 0)}</td><td class="n">${nf(r.peakMbps, 1)} ${ST.lang === 'fa' ? 'م.ب/ث' : 'Mbps'}</td><td>${r.reasons.map((x) => `<span class="reason">&bull; ${reason(x)}</span>`).join('')}</td></tr>`).join('') + '</tbody></table>';
+}
+function securityBlock() {
+  const L = R.security.routerLists, ev = R.security.events;
+  let h = `<div class="note"><b>${tk('routerLists')}:</b> ${nf(L['port scanners'] || 0, 0)} ${T(D.ps)} &middot; ${nf(L.ssh_blacklist || 0, 0)} ${T(D.ssh)} &middot; ${nf(L.telnet_blacklist || 0, 0)} ${T(D.tel)}</div>`;
+  if (!ev.length) return h + `<div class="empty">${tk('none')}</div>`;
+  return h + `<table><thead><tr>${th('c_when')}${th('c_sev')}${th('c_kind')}${th('c_user')}${th('c_det')}</tr></thead><tbody>` + ev.map((e) => `<tr><td class="sub2">${dt(e.last, true)}</td><td><span class="chip ${e.sev}">${T(D['sev_' + e.sev] || [e.sev, e.sev])}</span></td><td>${tKind(e.kind)}</td><td>${nm(e)}<br><span class="sub2">${ipx(e.ip)}</span></td><td class="sub2">${esc(e.detail)}</td></tr>`).join('') + '</tbody></table>';
+}
+function blockedTable() {
+  if (!R.blockedNow.length) return `<div class="empty">${tk('none')}</div>`;
+  return `<table><thead><tr>${th('c_user')}${th('c_net')}${th('c_rem')}${th('c_det')}</tr></thead><tbody>` + R.blockedNow.map((d) => `<tr><td>${nm(d)}<br><span class="sub2">${ipx(d.ip)}</span></td><td class="sub2">${ipx(d.vlan || '')}</td><td>${esc(d.timeout || (ST.lang === 'fa' ? 'تا رفع مسدودی' : 'until unblocked'))}</td><td class="sub2">${esc(d.comment || '')}</td></tr>`).join('') + '</tbody></table>';
+}
+function auditTable() {
+  if (!R.audit.length) return `<div class="empty">${tk('none')}</div>`;
+  return `<table><thead><tr>${th('c_when')}${th('c_act')}${th('c_user')}${th('c_det')}${th('c_by')}</tr></thead><tbody>` + R.audit.slice(0, 40).map((a) => `<tr><td class="sub2">${dt(a.ts, true)}</td><td><b>${tAct(a.action)}</b></td><td>${a.ip ? nm(a) + '<br><span class="sub2">' + ipx(a.ip) + '</span>' : '<span class="sub2">' + T(D.router_) + '</span>'}</td><td class="sub2">${esc(a.detail)}</td><td class="sub2">${esc(a.actor)}</td></tr>`).join('') + '</tbody></table>' + (R.audit.length > 40 ? `<div class="note">+ ${nf(R.audit.length - 40, 0)} ${ST.lang === 'fa' ? 'مورد دیگر در بخش «تاریخچه» داشبورد' : 'more in the dashboard Audit tab'}</div>` : '');
+}
+function offlineTable() {
+  if (!R.offline.length) return `<div class="empty">${tk('none')}</div>`;
+  return `<table><thead><tr>${th('c_user')}${th('c_grp')}${th('c_since')}</tr></thead><tbody>` + R.offline.map((d) => `<tr><td>${nm(d)} <span class="sub2">${ipx(d.ip)}</span></td><td class="sub2">${tGrp(d.group || 'Other')}</td><td class="sub2">${dt(d.last, true)} (${dur(R.generated - d.last)})</td></tr>`).join('') + '</tbody></table>' + (R.offlineTotal > R.offline.length ? `<div class="note">+ ${nf(R.offlineTotal - R.offline.length, 0)} ${ST.lang === 'fa' ? 'مورد دیگر' : 'more'}</div>` : '');
+}
+
+// ------------------------------------------------------------------ controls + data
+function url() {
+  const p = new URLSearchParams({ router: ST.router, lang: ST.lang, sec: [...ST.sections].join(',') });
+  if (ST.period === 'custom') { p.set('from', ST.from); p.set('to', ST.to); } else p.set('period', ST.period);
+  return p;
+}
+async function load() {
+  const el = $('#paper'); el.innerHTML = '<div class="empty">Loading the report...</div>';
+  try {
+    const p = new URLSearchParams(ST.period === 'custom' ? { from: ST.from, to: ST.to } : { period: ST.period });
+    R = await (await fetch(`/api/r/${encodeURIComponent(ST.router)}/api/report?${p}`, { cache: 'no-store' })).json();
+    if (R.error) throw new Error(R.error);
+    renderAll();
+  } catch (e) { R = null; el.innerHTML = `<div class="err">Could not load the report (${esc(e.message)}). Is Mikrotik Traffic Control running and the router connected?</div>`; }
+  history.replaceState(null, '', '?' + url());
+}
+function sync() {
+  $('#c-lang').value = ST.lang; $('#c-period').value = ST.period; $('#c-custom').hidden = ST.period !== 'custom'; $('#c-from').value = ST.from; $('#c-to').value = ST.to;
+  $('#c-secs').innerHTML = Object.entries(SECN).map(([k, v]) => `<label><input type="checkbox" data-s="${k}" ${ST.sections.has(k) ? 'checked' : ''}> ${v[0]}</label>`).join(' ');
+}
+function pageFooter() {   // every printed page: copyright (left), hotel (centre), page x / y (right)
+  const y = new Date().getFullYear(), st = document.createElement('style');
+  const box = 'font:8.5pt "Segoe UI",Tahoma,sans-serif;color:#667;';
+  st.textContent = `@page{size:A4;margin:11mm 11mm 17mm;@bottom-left{content:"\\00A9 ${y} Kish IT \\00B7 kish-it.com";${box}}@bottom-center{content:"${String(ORG.name).replace(/["\\]/g, "")}";${box}}@bottom-right{content:counter(page) " / " counter(pages);${box}}}`;
+  document.head.appendChild(st);
+}
+async function init() {
+  try {
+    const set = await (await fetch('/api/settings', { cache: 'no-store' })).json();
+    if (set.org && set.org.name) { ORG.name = set.org.name; D.hotel = [set.org.name, set.org.name]; }
+    if (set.hasLogo) ORG.logo = '/org-logo.png';
+  } catch { /* defaults */ }
+  if (window.I18N && OTHER.includes(ST.lang)) await I18N.set(ST.lang);
+  $('#c-lang').value = ST.lang;
+  pageFooter();
+  try { await Promise.all([document.fonts.load('400 1em Vazirmatn', 'اب'), document.fonts.load('700 1em Vazirmatn', 'اب'), document.fonts.load('400 1em Vazirmatn', 'Ab1')]); } catch { /* fonts are a refinement */ }
+  try { ROUTERS = await (await fetch('/api/routers', { cache: 'no-store' })).json(); } catch { ROUTERS = []; }
+  if (!ST.router || !ROUTERS.some((r) => r.id === ST.router)) ST.router = (ROUTERS[0] || {}).id || 'main';
+  $('#c-router').innerHTML = ROUTERS.map((r) => `<option value="${esc(r.id)}">${esc(r.name)}</option>`).join(''); $('#c-router').value = ST.router;
+  sync(); await load();
+}
+$('#c-router').addEventListener('change', (e) => { ST.router = e.target.value; load(); });
+$('#c-lang').addEventListener('change', async (e) => { ST.lang = e.target.value; if (window.I18N && OTHER.includes(ST.lang)) await I18N.set(ST.lang); sync(); renderAll(); history.replaceState(null, '', '?' + url()); });
+$('#c-period').addEventListener('change', (e) => { ST.period = e.target.value; sync(); if (ST.period !== 'custom') load(); });
+for (const id of ['#c-from', '#c-to']) $(id).addEventListener('change', () => { ST.from = $('#c-from').value; ST.to = $('#c-to').value; if (ST.from && ST.to) load(); });
+$('#c-secs').addEventListener('change', (e) => { const c = e.target.closest('input[data-s]'); if (!c) return; c.checked ? ST.sections.add(c.dataset.s) : ST.sections.delete(c.dataset.s); renderAll(); history.replaceState(null, '', '?' + url()); });
+$('#c-print').addEventListener('click', async () => { try { await document.fonts.ready; } catch { /* ignore */ } window.print(); });
+init();
+</script>
+</body>
+</html>
