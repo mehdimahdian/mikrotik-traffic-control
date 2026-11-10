@@ -4,12 +4,9 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## Unreleased
 
-* Translations completed for Persian, Arabic, Russian and Chinese (about 75 % of the extracted strings; the rest are code fragments and a few long help paragraphs that fall back to English).
-* Fix: dynamic content was not translated after switching language without reloading.
-* Release automation: a version tag builds the Windows installer (Setup.exe, per user or all users) and the portable zip with checksums and publishes them.
-* Documentation: illustrated README with screenshots and notes in all five languages; contributor files (code of conduct, issue and pull-request templates, releasing guide), translation sanity tests.
+* (nothing yet)
 
-## 1.0.0
+## 1.0.0 - 2026-11-10
 
 First public release.
 
@@ -21,3 +18,10 @@ First public release.
 * First-run **setup wizard** with business-type presets; dedicated least-privilege API user created with a one-time administrator login.
 * **5 languages** (en, fa, ar, ru, zh) with proper right-to-left layout; splash screen; Windows installer and tray agent.
 * Generic by design: no site-specific defaults; everything created on the router is tagged `mtc-` / `[mtc-...]`.
+
+Also in this release:
+
+* Translations completed for Persian, Arabic, Russian and Chinese (about 75 % of the extracted strings; the rest are code fragments and a few long help paragraphs that fall back to English).
+* Fix: dynamic content was not translated after switching language without reloading.
+* Release automation: a version tag builds the Windows installer (Setup.exe, per user or all users) and the portable zip with checksums and publishes them.
+* Documentation: illustrated README with screenshots and notes in all five languages; contributor files (code of conduct, issue and pull-request templates, releasing guide), translation sanity tests.

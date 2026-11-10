@@ -19,6 +19,8 @@
 
 Windows SmartScreen may warn about an unsigned installer the first time (*More info* > *Run anyway*), until the project's releases are code-signed.
 
+The published installer is built by GitHub Actions from the tagged source; the build is reproducible from `windows/build-release.ps1`.
+
 ### Option B - zip
 
 1. Unzip `MikrotikTrafficControl-<version>-win-x64.zip` anywhere.
