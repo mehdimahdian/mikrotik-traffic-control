@@ -4,6 +4,10 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 
 ## Unreleased
 
+* (nothing yet)
+
+## 1.1.0 - 2026-11-14
+
 * **Shared configuration on the router.** Organization, logo, networks, IP / user management, limits, names and the other settings are saved on the router (`/system/script` entries `mtc-cfg-*`, no passwords) and kept in sync both ways every 30 s. A second PC only logs in and gets the same settings; the setup guide offers "Join" instead of its questions. Router setup tab: *Shared configuration* panel (save / load now).
 * Each PC now gets its own router API user (`mtc-<computer name>`), so a second PC no longer resets the first one's password.
 * Sign-in is one step: enter a router account; the program creates its own limited API user if the account may, otherwise uses the account directly. Router found automatically, live address check, specific error hints, blank admin password allowed, show-password option.

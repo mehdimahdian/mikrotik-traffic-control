@@ -2,7 +2,7 @@
 ;   Build with:  powershell -File windows\build-release.ps1 -NodeExe C:\path\to\node.exe
 ; (c) Kish IT - https://kish-it.com
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 #ifndef StageDir
   #define StageDir "..\dist\stage"
