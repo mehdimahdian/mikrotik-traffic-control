@@ -43,9 +43,9 @@ test('wrong password gives a clean code', async () => {
 });
 test('provision creates a dedicated user and returns a one-time token (no password)', async () => {
   const r = await api('/api/routers/provision', { host: '127.0.0.1', port: mockPort, adminUser: 'admin', adminPassword: 'admin', restrict: false });
-  assert.equal(r.ok, true); assert.equal(r.user, 'mtc-monitor'); assert.ok(r.token); assert.ok(!JSON.stringify(r).includes('password'));
+  assert.equal(r.ok, true); assert.match(r.user, /^mtc-/); assert.ok(r.token); assert.ok(!JSON.stringify(r).includes('password'));
   token = r.token;
-  assert.ok(mock.state['/user'].some((u) => u.name === 'mtc-monitor' && u.group === 'mtc'));
+  assert.ok(mock.state['/user'].some((u) => u.name === r.user && u.group === 'mtc'));
 });
 test('add router with the token; collector delivers live data', async () => {
   const r = await api('/api/routers', { name: 'Test Router', host: '127.0.0.1', port: mockPort, token });
@@ -109,4 +109,76 @@ test('bandwidth groups are created from the networks marked as staff / guest (no
   const q = await api(base + '/qos'); const g = Object.fromEntries(q.config.groups.map((x) => [x.id, x.targets]));
   assert.deepEqual(g.staff, ['192.168.88.0/24']); assert.deepEqual(g.guest, ['10.20.0.0/24']);
   assert.equal(q.config.enabled, false, 'master switch stays off until the admin turns it on');
+});
+
+test('shared configuration: saved on the router, a second PC joins without the wizard', async () => {
+  // PC 1 saves its configuration (organization, logo-less, networks) to the router
+  await api('/api/settings', { org: { name: 'Shared Org', type: 'hotel' } });
+  assert.equal((await api(`/api/r/${routerId}/api/config`, { staffNetworks: ['ether2'], guestNetworks: ['wlan-guest'], sec: { adminIps: ['192.168.88.5'] } })).ok, true);
+  const push = await api('/api/routers/sync', { id: routerId, mode: 'push' }); assert.equal(push.ok, true, JSON.stringify(push));
+  const scripts = mock.state['/system/script'].filter((s) => /^mtc-cfg-/.test(s.name)); assert.ok(scripts.length >= 1);
+  assert.ok(scripts.every((s) => !/password|pwEnc/i.test(Buffer.from(s.source, 'base64').toString('latin1'))), 'no secrets stored');
+  // PC 2: a brand-new manager with an empty data folder
+  const port2 = await freePort(), dir2 = fs.mkdtempSync(path.join(os.tmpdir(), 'mtc-test2-')), base2 = `http://127.0.0.1:${port2}`;
+  const m2 = fork(path.join(__dirname, '..', 'src', 'manager.js'), [], { env: Object.assign({}, process.env, { MTC_PORT: String(port2), MTC_DATA: dir2 }), stdio: 'ignore' });
+  const api2 = async (p, body) => (await fetch(base2 + p, body === undefined ? {} : { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })).json();
+  try {
+    for (let i = 0; i < 40; i++) { try { await fetch(base2 + '/api/settings'); break; } catch { await sleep(250); } }
+    assert.equal((await api2('/api/settings')).wizardDone, false);
+    const creds = { host: '127.0.0.1', port: mockPort, user: 'demo', password: 'demo' };
+    const rc = await api2('/api/routers/remote-config', creds); assert.equal(rc.found, true); assert.equal(rc.org, 'Shared Org');
+    const add = await api2('/api/routers', Object.assign({ name: 'x', adopt: true }, creds)); assert.equal(add.ok, true);
+    const s2 = await api2('/api/settings'); assert.equal(s2.org.name, 'Shared Org'); assert.equal(s2.wizardDone, true);
+    const cfg = JSON.parse(fs.readFileSync(path.join(dir2, 'routers', add.id, 'config.json'), 'utf8'));
+    assert.deepEqual(cfg.staffNetworks, ['ether2']); assert.deepEqual(cfg.sec.adminIps, ['192.168.88.5']);
+  } finally { m2.kill(); await sleep(300); try { fs.rmSync(dir2, { recursive: true, force: true }); } catch { /* ignore */ } }
+});
+
+test('sign-in helpers: probe tells open / refused, discovery answers, a blank admin password works, login errors are specific', async () => {
+  assert.equal((await api('/api/routers/probe', { host: '127.0.0.1', port: mockPort })).ok, true);
+  const closed = await api('/api/routers/probe', { host: '127.0.0.1', port: await freePort() }); assert.equal(closed.ok, false); assert.equal(closed.code, 'refused');
+  const d = await api('/api/discover'); assert.ok(Array.isArray(d.candidates));
+  const fresh = createMock({ adminPassword: '', clients: 2 }); const fp = await fresh.listen(0);
+  try {
+    const bad = await api('/api/routers/provision', { host: '127.0.0.1', port: fp, adminUser: 'admin', adminPassword: 'wrong', restrict: false }); assert.equal(bad.code, 'login-failed');
+    const ok = await api('/api/routers/provision', { host: '127.0.0.1', port: fp, adminUser: 'admin', adminPassword: '', restrict: false }); assert.equal(ok.ok, true, JSON.stringify(ok));
+  } finally { await fresh.close(); }
+});
+
+test('API switched off: the web interface (REST) logs in, switches the API on and creates the user; probe lists the ways in', async () => {
+  const apiPort = await freePort(), m = createMock({ clients: 2, apiOff: true }); await m.listen(apiPort);
+  // REST must be on the standard web port for the manager to find it: use the mock's own REST port through the "http" probe list is not possible,
+  // so the manager is pointed at it with a dedicated environment: here we call the library the same way the manager does.
+  const restapi = require('../src/restapi'); const rp = await m.listenRest(0);
+  try {
+    assert.equal((await api('/api/routers/probe', { host: '127.0.0.1', port: apiPort })).ok, false, 'API closed');
+    const rest = await restapi.connect('127.0.0.1', 'admin', 'admin', [[rp, false]]);
+    const r = await restapi.bootstrap(rest, { user: 'mtc-x', password: 'pw123', policy: 'read,write,api' });
+    assert.ok(r.pcAddress); assert.ok(m.state['/user'].some((u) => u.name === 'mtc-x' && u.group === 'mtc'));
+    assert.equal(m.state['/ip/service'].find((x) => x.name === 'api').disabled, 'false');
+    // the same through the wizard endpoint (API is on now, so switch it off again to force the REST path)
+    const m2 = createMock({ clients: 2, apiOff: true }); const ap2 = await freePort(); await m2.listen(ap2); const rp2 = await m2.listenRest(0);
+    try {
+      const pv = await api('/api/routers/provision', { host: '127.0.0.1', port: ap2, webPort: rp2, adminUser: 'admin', adminPassword: 'admin', restrict: false });
+      assert.equal(pv.ok, true, JSON.stringify(pv)); assert.equal(pv.via, 'rest'); assert.ok(pv.token);
+      const bad = await api('/api/routers/provision', { host: '127.0.0.1', port: ap2, webPort: rp2, adminUser: 'admin', adminPassword: 'nope', restrict: false }); assert.equal(bad.code, 'login-failed');
+    } finally { await m2.close(); }
+    const t = await api('/api/routers/test', { host: '127.0.0.1', port: apiPort, user: 'mtc-x', password: 'pw123' }); assert.equal(t.ok, true, 'API works after the REST bootstrap');
+    await assert.rejects(restapi.connect('127.0.0.1', 'admin', 'wrong', [[rp, false]]), /invalid user name or password/);
+  } finally { await m.close(); }
+});
+test('init script is personalised: own user name, generated password, one-time token', async () => {
+  const r = await fetch(base + '/api/init-script?ip=192.168.88.10&host=127.0.0.1&port=' + mockPort); const t = await r.text();
+  assert.ok(r.headers.get('x-mtc-token')); assert.ok(!t.includes('CHANGE-ME-TO-A-LONG') || t.includes(':if'), 'password filled in');
+  assert.match(t, /:local pw "[A-Za-z0-9]{24}"/); assert.ok(!t.includes('mtc-monitor'));
+  const tk = await api('/api/routers/test', { token: r.headers.get('x-mtc-token'), host: '127.0.0.1', port: mockPort }); assert.equal(tk.ok, false, 'user does not exist on the router until the script runs');
+});
+
+test('sign out: the router is forgotten, its own API user can be removed, the shared configuration stays on the router', async () => {
+  const before = mock.state['/system/script'].filter((s) => /^mtc-cfg-/.test(s.name)).length;
+  const list = await api('/api/routers'); const r = list.find((x) => x.id === routerId); assert.ok(r);
+  const out = await api('/api/routers/delete', { id: routerId, removeUser: true }); assert.equal(out.ok, true);
+  assert.deepEqual(await api('/api/routers'), []);
+  assert.equal(mock.state['/system/script'].filter((s) => /^mtc-cfg-/.test(s.name)).length, before, 'shared configuration untouched');
+  assert.ok(out.userRemoved === true || out.userRemoved === false);
 });

@@ -55,3 +55,13 @@ The router is saved (encrypted), collection starts and your choices are stored. 
 5. Reports: **Reports** tab, pick a period and a language.
 
 You can re-run the guide any time by deleting the router in *Manage routers* (its history folder stays on disk).
+
+## Ways to sign in
+
+The setup guide starts with the router address and an account. It shows which doors answer: **API** (8728), **Web** (80/443, RouterOS 7 REST), **SSH** (22), **Winbox** (8291).
+
+* API works: the program signs in and creates its own limited API user.
+* API is off but the web interface works: it signs in there, switches the API service on and creates the user.
+* Only Winbox / SSH work: download the personalised `mtc-init.rsc`, paste it into Winbox *New Terminal* (or an SSH session) and press **I ran the script - continue**. Winbox and SSH themselves are not spoken by the program.
+
+**Sign out** (header) forgets the saved login on this PC and stops monitoring; it can also delete this PC's API user from the router. The shared configuration stays on the router.

@@ -4,6 +4,7 @@
 // changed and removed like on a real router. Synthetic clients generate growing connection counters.
 
 const net = require('net');
+const http = require('http');
 const { encSentence, parseSentence } = require('../src/rosapi');
 
 const bool = (v) => (v === 'yes' || v === 'true' ? 'true' : v === 'no' || v === 'false' ? 'false' : v);
@@ -31,6 +32,8 @@ function createMock(opts = {}) {
   put('/ip/firewall/filter', { chain: 'forward', action: 'fasttrack-connection', disabled: 'false', comment: 'defconf: fasttrack' });
   put('/ip/firewall/filter', { chain: 'forward', action: 'accept', disabled: 'false', comment: 'defconf: accept established' });
   put('/ip/firewall/filter', { chain: 'input', action: 'accept', disabled: 'false', comment: 'defconf: accept established' });
+  put('/ip/service', { name: 'api', port: '8728', disabled: o.apiOff ? 'true' : 'false', address: '' });
+  put('/ip/service', { name: 'www', port: '80', disabled: 'false', address: '' });
   put('/user/group', { name: 'full', policy: 'local,telnet,ssh,ftp,reboot,read,write,policy,test,winbox,password,web,sniff,sensitive,api,romon,rest-api' });
   put('/user', { name: o.user, group: o.group });
   put('/user', { name: 'admin', group: 'full' });
@@ -101,7 +104,7 @@ function createMock(opts = {}) {
         try {
           if (w[0] === '/login') {
             const a = Object.fromEntries(w.slice(1).map((x) => { const j = x.indexOf('=', 1); return [x.slice(1, j), x.slice(j + 1)]; }));
-            const ok = (a.name === o.user && a.password === o.password) || (a.name === 'admin' && a.password === (o.adminPassword || 'admin')) || tbl('/user').some((u) => u.name === a.name && u.pw === a.password);
+            const ok = (a.name === o.user && a.password === o.password) || (a.name === 'admin' && a.password === (o.adminPassword !== undefined ? o.adminPassword : 'admin')) || tbl('/user').some((u) => u.name === a.name && u.pw === a.password);
             if (!ok) { send('!trap', '=message=invalid user name or password (6)'); send('!done'); continue; }
             authed = true; s.user = a.name; send('!done'); continue;
           }
@@ -113,10 +116,37 @@ function createMock(opts = {}) {
       }
     });
   });
+  // ---- REST (web interface) of RouterOS 7: /rest/<menu path>  GET (print, ?name=x), PUT (add), PATCH /<id> (set)
+  let apiPort = 0, apiUp = false;
+  const startApi = () => new Promise((res) => { if (apiUp) return res(apiPort); server.listen(apiPort, '127.0.0.1', () => { apiUp = true; apiPort = server.address().port; res(apiPort); }); });
+  const stopApi = () => new Promise((res) => { if (!apiUp) return res(); for (const x of sockets) x.destroy(); server.close(() => { apiUp = false; res(); }); });
+  const restAuth = (hdr) => { const m = /^Basic (.*)$/.exec(hdr || ''); if (!m) return false; const t = Buffer.from(m[1], 'base64').toString(), i = t.indexOf(':'), n = t.slice(0, i), pw = t.slice(i + 1);
+    return (n === o.user && pw === o.password) || (n === 'admin' && pw === (o.adminPassword !== undefined ? o.adminPassword : 'admin')) || tbl('/user').some((u) => u.name === n && u.pw === pw); };
+  const rest = http.createServer((req, res) => {
+    let body = ''; req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      const send = (code, obj) => { res.writeHead(code, { 'Content-Type': 'application/json' }); res.end(obj === undefined ? '' : JSON.stringify(obj)); };
+      if (!restAuth(req.headers.authorization)) return send(401, { error: 401, message: 'Unauthorized' });
+      const u = new URL(req.url, 'http://x'); if (!u.pathname.startsWith('/rest/')) return send(404);
+      let path = u.pathname.slice(5), id = null; const m = /^(.*)\/(\*[0-9A-F]+)$/.exec(path); if (m) { path = m[1]; id = m[2]; }
+      let j = {}; try { j = body ? JSON.parse(body) : {}; } catch { return send(400, { detail: 'bad json' }); }
+      if (req.method === 'GET') { const q = [...u.searchParams.entries()]; return send(200, tbl(path).filter((r) => matchQ(r, q)).map((r) => Object.assign({ disabled: 'false' }, r))); }
+      if (req.method === 'PUT') { const row = Object.assign({}, j); if (path === '/user') { row.pw = j.password; delete row.password; } return send(201, put(path, row)); }
+      if (req.method === 'PATCH') {
+        const row = tbl(path).find((r) => r['.id'] === id); if (!row) return send(404, { detail: 'no such item' });
+        for (const [k, v] of Object.entries(j)) { if (k === 'password') row.pw = v; else row[k] = v; }
+        if (path === '/ip/service' && row.name === 'api' && row.disabled === 'false') startApi();
+        return send(200, row);
+      }
+      send(405);
+    });
+  });
   return {
     state: T, clients,
-    listen: (port = 0) => new Promise((res) => server.listen(port, '127.0.0.1', () => res(server.address().port))),
-    close: () => new Promise((res) => { for (const s of sockets) s.destroy(); server.close(() => res()); }),
+    listen: async (port = 0) => { if (!o.apiOff) await startApi(); else { apiPort = port; } return apiPort; },
+    listenRest: (port = 0) => new Promise((res) => rest.listen(port, '127.0.0.1', () => res(rest.address().port))),
+    setApiPort: (port) => { apiPort = port; },
+    close: () => new Promise((res) => { for (const x of sockets) x.destroy(); rest.close(); if (apiUp) server.close(() => res()); else res(); }),
   };
 }
 module.exports = { createMock };

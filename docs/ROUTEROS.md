@@ -58,3 +58,9 @@ Rule of thumb: everything created starts with `mtc-` or has a comment starting `
 * The WAN interface is the interface of the active default route (PPPoE, DHCP client, static, LTE, VLAN, bridge...). Override it in Router setup / Bandwidth control if the router has several uplinks.
 * Devices are tracked by IP. Phones with a private (random) Wi-Fi address that change MAC need a static DHCP lease to be blocked/limited reliably. The *VPN & MACs* tab shows who rotates.
 * IPv4 only.
+
+## Shared configuration (`mtc-cfg-*` scripts)
+
+So that every PC sees the same setup, the program stores its configuration on the router: organization name and type, logo (up to 400 KB), router name / DNS, and the per-router files `config`, `qos`, `setup`, `setup-state`, `hotspot`, `names`, `staff`, `watch`, `user-labels`. They are written as gzip + base64 chunks into `/system/script` entries named `mtc-cfg-<revision>-<nnn>` (policy `read`, never executed, comment `[mtc-config]`). A new revision is written completely before the old one is removed. **Passwords are never stored**, and traffic history stays on each PC.
+
+Every 30 s each PC compares its copy with the router: its own changes are saved, changes made from another PC are loaded (the collector restarts); if both changed, the newer one wins. A new PC that connects to a router carrying this data is offered **Join** in the setup guide and skips all questions. Remove with `/system script remove [find where name~"^mtc-cfg-"]`.

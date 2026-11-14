@@ -46,7 +46,7 @@ class RosApi {
       s.on('connect', async () => {
         up = true;
         try { await this._exec(['/login', '=name=' + this.user, '=password=' + this.pw]); resolve(); }
-        catch (e) { s.destroy(); reject(new Error('API login failed')); }
+        catch (e) { s.destroy(); reject(new Error('API login failed: ' + String(e.message || '').replace(/password=\S+/gi, ''))); }
       });
     });
   }

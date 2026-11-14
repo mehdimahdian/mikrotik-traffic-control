@@ -12,6 +12,9 @@ const crypto = require('crypto');
 const { fork, execFile } = require('child_process');
 const { RosApi } = require('./rosapi');
 const routerinfo = require('./routerinfo');
+const store = require('./routerstore');
+const restapi = require('./restapi');
+const os = require('os');
 
 const PORT = Number(process.env.MTC_PORT || 8787);
 const DATA = path.resolve(process.env.MTC_DATA || path.join(__dirname, '..', 'data'));
@@ -103,7 +106,7 @@ const okPort = (n) => Number.isInteger(n) && n > 0 && n < 65536;
 const okDns = (s) => s === '' || /^\d{1,3}(\.\d{1,3}){3}$/.test(s);
 function friendly(e) {
   const m = String(e.message || e);
-  return /login/i.test(m) ? 'login-failed' : /ECONNREFUSED/.test(m) ? 'refused' : /timeout|ETIMEDOUT|EHOSTUNREACH/i.test(m) ? 'no-answer' : 'error:' + m.replace(/password=\S+/gi, '');
+  return /ENETUNREACH|EHOSTUNREACH|ENOTFOUND|EADDRNOTAVAIL/.test(m) ? 'unreachable' : /invalid user name or password/i.test(m) ? 'login-failed' : /login/i.test(m) ? 'error:' + m.replace(/password=\S+/gi, '') : /ECONNREFUSED/.test(m) ? 'refused' : /timeout|ETIMEDOUT|EHOSTUNREACH/i.test(m) ? 'no-answer' : 'error:' + m.replace(/password=\S+/gi, '');
 }
 async function withApi(host, port, user, pw, fn) {
   const api = new RosApi(host, port, user, pw);
@@ -111,6 +114,24 @@ async function withApi(host, port, user, pw, fn) {
     await Promise.race([api.connect(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]);
     return await fn(api);
   } finally { api.close(); }
+}
+/** is something listening on host:port? -> 'open' | 'refused' | 'no-answer' */
+let probeLocal = '';
+function tcpProbe(host, port, ms = 2500) {
+  return new Promise((resolve) => {
+    const s = net.connect({ host, port }); let done = false;
+    const end = (v) => { if (!done) { done = true; s.destroy(); resolve(v); } };
+    s.setTimeout(ms, () => end('no-answer')); s.on('connect', () => { probeLocal = s.localAddress || probeLocal; end('open'); });
+    s.on('error', (e) => end(e.code === 'ECONNREFUSED' ? 'refused' : /UNREACH|NOTFOUND/.test(e.code || '') ? 'unreachable' : 'no-answer'));
+  });
+}
+/** this PC's default gateway = almost always the router */
+function gatewayGuess() {
+  return new Promise((resolve) => {
+    const ok = (t) => { const v = String(t || "").trim().split(/\s+/)[0]; return /^\d{1,3}(\.\d{1,3}){3}$/.test(v) && v !== '0.0.0.0' ? v : ''; };
+    if (process.platform === 'win32') execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', "(Get-NetRoute -DestinationPrefix '0.0.0.0/0' -ErrorAction SilentlyContinue | Sort-Object RouteMetric | Select-Object -First 1).NextHop"], { env: cleanEnv(), windowsHide: true, timeout: 6000 }, (e, out) => resolve(e ? '' : ok(out)));
+    else execFile('sh', ['-c', "ip route 2>/dev/null | awk '/^default/{print $3; exit}' || netstat -rn 2>/dev/null | awk '/^default/{print $2; exit}'"], { timeout: 4000 }, (e, out) => resolve(e ? '' : ok(out)));
+  });
 }
 async function testRouter(host, port, user, pw) {
   try { return await withApi(host, port, user, pw, async (api) => { const id = await api.run(['/system/identity/print']); await api.run(['/ip/firewall/connection/print', '=count-only=']); return { ok: true, identity: (id[0] && id[0].name) || '' }; }); }
@@ -124,6 +145,70 @@ async function credsOf(b) {
   if (!pw && b.id) { const r = routers.find((x) => x.id === b.id); if (r) pw = await decrypt(r.pwEnc); }
   return { host, port, user: b.user, pw };
 }
+
+// ---------------------------------------------------------------- shared configuration on the router (see routerstore.js)
+// Everything that defines "how this organisation uses the router" is kept on the router too, so another PC only has to log in.
+// PC-only data (history database, quota counters, saved passwords) is never shared.
+const SHARED_FILES = ['config.json', 'qos.json', 'setup.json', 'setup-state.json', 'hotspot.json', 'names.json', 'staff.json', 'watch.json', 'user-labels.json'];
+const SYNCF = path.join(DATA, 'sync.json');
+let syncState = {}; try { syncState = JSON.parse(fs.readFileSync(SYNCF, 'utf8')); } catch { /* first run */ }
+const saveSync = () => { try { fs.writeFileSync(SYNCF, JSON.stringify(syncState, null, 2)); } catch { /* ignore */ } };
+const syncInfo = {};          // id -> {state, at, by, error} for the dashboard
+const rdir = (id) => path.resolve(DATA, 'routers', id);
+const jread = (f) => { try { return JSON.parse(fs.readFileSync(f, 'utf8')); } catch { return undefined; } };
+const mtimeOf = (f) => { try { return fs.statSync(f).mtimeMs; } catch { return 0; } };
+const LOGO = path.join(DATA, 'org-logo.png');
+
+function buildBundle(r) {
+  const files = {}; let m = Math.max(mtimeOf(SETTINGS), mtimeOf(LOGO));
+  for (const n of SHARED_FILES) { const f = path.join(rdir(r.id), n), v = jread(f); if (v !== undefined) { files[n] = v; m = Math.max(m, mtimeOf(f)); } }
+  let logo = null; try { const b = fs.readFileSync(LOGO); if (b.length <= 400 * 1024) logo = b.toString('base64'); } catch { /* none */ }
+  const content = { org: settings.org, logo, router: { name: r.name, port: r.port, dns: r.dns || '' }, files };
+  return { bundle: { v: 1, content, lang: settings.lang }, hash: store.contentHash(content), mtime: m };
+}
+/** write a bundle into this PC's data folder (router id); first = a PC joining: also take the default language */
+function applyBundle(id, bundle, first) {
+  const c = bundle.content || {};
+  if (c.org && typeof c.org === 'object') settings.org = { name: String(c.org.name || '').slice(0, 80).replace(/[<>]/g, ''), type: TYPES.includes(c.org.type) ? c.org.type : 'office' };
+  if (first && LANGS.includes(bundle.lang)) settings.lang = bundle.lang;
+  if (first) settings.wizardDone = true;
+  saveSettings();
+  if (c.logo) { try { fs.writeFileSync(LOGO, Buffer.from(c.logo, 'base64')); } catch { /* ignore */ } }
+  fs.mkdirSync(rdir(id), { recursive: true });
+  for (const n of SHARED_FILES) if (c.files && c.files[n] !== undefined) fs.writeFileSync(path.join(rdir(id), n), JSON.stringify(c.files[n], null, 2));
+}
+async function apiFor(r) { const api = new RosApi(r.host, r.port, r.user, await decrypt(r.pwEnc)); await Promise.race([api.connect(), new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 8000))]); return api; }
+
+let syncBusy = false;
+/** one reconciliation: push local changes, pull router changes. mode: 'push' | 'pull' | undefined (automatic) */
+async function syncRouter(r, mode) {
+  const info = syncInfo[r.id] = syncInfo[r.id] || {}; let api;
+  try {
+    api = await apiFor(r);
+    const m = await store.meta(api), L = buildBundle(r), st = syncState[r.id] = syncState[r.id] || {};
+    let act = 'none';
+    if (mode === 'push' || (!mode && !m)) act = 'push';
+    else if (mode === 'pull') act = m ? 'pull' : 'none';
+    else if (m.c === L.hash) act = 'none';
+    else if (st.hash === L.hash) act = 'pull';                    // this PC changed nothing since the last sync
+    else if (st.hash === m.c) act = 'push';                       // the router copy did not change
+    else act = L.mtime > (m.at || 0) ? 'push' : 'pull';           // both changed: the newer one wins
+    if (act === 'push') { await store.write(api, L.bundle, os.hostname()); st.hash = L.hash; info.by = os.hostname(); info.at = Date.now(); }
+    else if (act === 'pull') {
+      const got = await store.read(api);
+      if (got) { applyBundle(r.id, got.bundle, false); st.hash = buildBundle(r).hash; info.by = got.by; info.at = got.at; stopWorker(r.id); await startWorker(r); }
+    } else { st.hash = L.hash; if (m) { info.by = m.by; info.at = m.at; } }
+    saveSync(); info.state = act === 'none' ? 'ok' : act === 'push' ? 'saved' : 'loaded'; info.error = ''; info.checked = Date.now();
+  } catch (e) { info.state = 'error'; info.error = friendly(e); }
+  finally { if (api) api.close(); }
+  return info;
+}
+async function syncAll() {
+  if (syncBusy) return; syncBusy = true;
+  try { for (const r of routers) await syncRouter(r); } finally { syncBusy = false; }
+}
+let syncTimer = null;
+const syncSoon = () => { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncAll().catch(() => {}), 2000); };
 
 // ---------------------------------------------------------------- http
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.css': 'text/css', '.svg': 'image/svg+xml', '.png': 'image/png', '.ico': 'image/x-icon', '.woff2': 'font/woff2' };
@@ -159,7 +244,7 @@ const server = http.createServer(async (req, res) => {
         if (b.lang !== undefined) { if (!LANGS.includes(b.lang)) return sendJson(res, 200, { ok: false, error: 'bad language' }); settings.lang = b.lang; }
         if (b.org) { const name = String(b.org.name || '').trim().slice(0, 80).replace(/[<>]/g, ''), type = TYPES.includes(b.org.type) ? b.org.type : settings.org.type; settings.org = { name, type }; }
         if (b.wizardDone !== undefined) settings.wizardDone = !!b.wizardDone;
-        saveSettings(); sendJson(res, 200, { ok: true });
+        saveSettings(); syncSoon(); sendJson(res, 200, { ok: true });
       });
     }
     if (u.pathname === '/org-logo.png') {                       // optional: put your own logo at <data>/org-logo.png
@@ -170,16 +255,34 @@ const server = http.createServer(async (req, res) => {
       const list = await Promise.all(routers.map(async (r) => Object.assign(pub(r), { status: await workerGet(r.id, '/api/status') })));
       return sendJson(res, 200, list);
     }
-    if (u.pathname === '/api/init-script' && req.method === 'GET') {     // RouterOS script that prepares a fresh router for this program (API user + service)
-      const ip = String(u.searchParams.get('ip') || ''); if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return sendJson(res, 200, { error: 'bad address' });
-      const t = fs.readFileSync(path.join(ROUTEROS_DIR, 'mtc-init.rsc'), 'utf8').replace(/%PC_ADDRESS%/g, ip);
-      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': 'attachment; filename="mtc-init.rsc"', 'Cache-Control': 'no-store' }); return res.end(t);
+    if (u.pathname === '/api/init-script' && req.method === 'GET') {     // RouterOS script (Winbox / SSH terminal) that prepares a router for this program: API user + service
+      const ip = String(u.searchParams.get('ip') || ''), host = String(u.searchParams.get('host') || ''), port = Number(u.searchParams.get('port') || 8728);
+      if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) return sendJson(res, 200, { error: 'bad address' });
+      const user = 'mtc-' + slug(os.hostname()).slice(0, 18), pw = randPw(), token = crypto.randomBytes(16).toString('hex');
+      let t = fs.readFileSync(path.join(ROUTEROS_DIR, 'mtc-init.rsc'), 'utf8').replace(/%PC_ADDRESS%/g, ip).replace(/mtc-monitor/g, user);
+      t = t.replace('"CHANGE-ME-TO-A-LONG-RANDOM-PASSWORD"   ;# <== CHANGE ME', '"' + pw + '"');   // the generated password; the program keeps it (encrypted) when you continue
+      if (okHost(host) && okPort(port)) pending.set(token, { host, port, user, pw, exp: Date.now() + 30 * 60e3 });
+      res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Content-Disposition': 'attachment; filename="mtc-init.rsc"', 'Cache-Control': 'no-store', 'X-MTC-Token': token }); return res.end(t);
+    }
+    if (u.pathname === '/api/discover' && req.method === 'GET') {            // wizard: guess the router (this PC's gateway) and see whether its API answers
+      const gw = await gatewayGuess(), cands = [...new Set([gw, '192.168.88.1'].filter(Boolean))], found = [];
+      for (const h of cands) found.push({ host: h, api: await tcpProbe(h, 8728, 1500) });
+      return sendJson(res, 200, { gateway: gw, candidates: found });
+    }
+    if (u.pathname === '/api/routers/probe' && req.method === 'POST') {      // wizard: which ways lead to this router? (API, web/REST, SSH, Winbox)
+      return readJson(req, res, async (b) => {
+        const port = Number(b.port || 8728); if (!okHost(b.host) || !okPort(port)) return sendJson(res, 200, { ok: false, code: 'bad-input' });
+        const names = { api: port, 'api-ssl': 8729, http: 80, https: 443, ssh: 22, winbox: 8291 };
+        const res2 = await Promise.all(Object.values(names).map((pt) => tcpProbe(b.host, pt, 1800)));
+        const ports = Object.fromEntries(Object.keys(names).map((k, i) => [k, res2[i]]));
+        sendJson(res, 200, { ok: ports.api === 'open', code: ports.api === 'open' ? '' : ports.api, ports, pc: probeLocal.replace(/^::ffff:/, '') });
+      });
     }
     if (u.pathname === '/api/routers/test' && req.method === 'POST') {
       return readJson(req, res, async (b) => {
         const port = Number(b.port || 8728);
         if (!b.token && (!okHost(b.host) || !okPort(port) || !okUser(b.user))) return sendJson(res, 200, { ok: false, code: 'bad-input' });
-        const c = await credsOf(b); if (!c.pw) return sendJson(res, 200, { ok: false, code: 'no-password' });
+        const c = await credsOf(b);
         sendJson(res, 200, await testRouter(c.host, c.port, c.user, c.pw));
       });
     }
@@ -187,27 +290,38 @@ const server = http.createServer(async (req, res) => {
       return readJson(req, res, async (b) => {
         const port = Number(b.port || 8728);
         if (!b.token && (!okHost(b.host) || !okPort(port) || !okUser(b.user))) return sendJson(res, 200, { ok: false, code: 'bad-input' });
-        const c = await credsOf(b); if (!c.pw) return sendJson(res, 200, { ok: false, code: 'no-password' });
+        const c = await credsOf(b);          // a blank password is legal on RouterOS (a new router's admin has none)
         try { const info = await withApi(c.host, c.port, c.user, c.pw, (api) => routerinfo.inspect(api, c.user)); sendJson(res, 200, { ok: true, info }); }
         catch (e) { sendJson(res, 200, { ok: false, code: friendly(e) }); }
       });
     }
-    if (u.pathname === '/api/routers/provision' && req.method === 'POST') {     // wizard: create the least-privilege user with a one-time admin login
+    if (u.pathname === '/api/routers/provision' && req.method === 'POST') {     // wizard: sign in any way that works and create the least-privilege API user
       return readJson(req, res, async (b) => {
         const port = Number(b.port || 8728);
-        if (!okHost(b.host) || !okPort(port) || !okUser(b.adminUser) || !b.adminPassword) return sendJson(res, 200, { ok: false, code: 'bad-input' });
-        const user = 'mtc-monitor', pw = randPw();
-        try {
+        if (!okHost(b.host) || !okPort(port) || !okUser(b.adminUser)) return sendJson(res, 200, { ok: false, code: 'bad-input' });
+        const user = 'mtc-' + slug(os.hostname()).slice(0, 18), pw = randPw();   // one API user per PC: a second PC must not reset the first one's password
+        const done = async (pcAddress, via) => {
+          const t = await testRouter(b.host, port, user, pw); if (!t.ok) return sendJson(res, 200, Object.assign({ via }, t));
+          const token = crypto.randomBytes(16).toString('hex'); pending.set(token, { host: b.host, port, user, pw, exp: Date.now() + 30 * 60e3 });
+          sendJson(res, 200, { ok: true, token, user, pcAddress, identity: t.identity, via });
+        };
+        let first;
+        try {   // 1. the RouterOS API
           const pcAddress = await withApi(b.host, port, b.adminUser, String(b.adminPassword), async (api) => {
             const pcA = (api.sock && api.sock.localAddress) || '';
             await routerinfo.provisionUser(api, { user, password: pw, address: b.restrict && pcA ? pcA + '/32' : '' });
             return pcA;
           });
-          const t = await testRouter(b.host, port, user, pw);
-          if (!t.ok) return sendJson(res, 200, t);
-          const token = crypto.randomBytes(16).toString('hex'); pending.set(token, { host: b.host, port, user, pw, exp: Date.now() + 30 * 60e3 });
-          sendJson(res, 200, { ok: true, token, user, pcAddress, identity: t.identity });
-        } catch (e) { sendJson(res, 200, { ok: false, code: friendly(e) }); }
+          return await done(pcAddress, 'api');
+        } catch (e) { first = friendly(e); }
+        if (['login-failed', 'refused', 'no-answer', 'unreachable'].includes(first)) {
+          try {   // 2. the web interface (REST, RouterOS 7): log in there, switch the API on, create the user
+            const rest = await restapi.connect(b.host, b.adminUser, String(b.adminPassword), b.webPort && okPort(Number(b.webPort)) ? [[Number(b.webPort), !!b.webTls]] : [[80, false], [443, true]]);
+            const r = await restapi.bootstrap(rest, { user, password: pw, policy: 'read,write,api,test,ftp,policy,sensitive' });
+            return await done(r.pcAddress, 'rest');
+          } catch (e) { if (/invalid user name or password/.test(e.message)) first = 'login-failed'; }
+        }
+        sendJson(res, 200, { ok: false, code: first });
       });
     }
     if (u.pathname === '/api/routers' && req.method === 'POST') {
@@ -223,15 +337,49 @@ const server = http.createServer(async (req, res) => {
         if (ex) { Object.assign(ex, { name, host: c.host, port: c.port, user: c.user, dns, pwEnc }); saveRouters(); await startWorker(ex); return sendJson(res, 200, { ok: true, id: ex.id, identity: t.identity }); }
         let id = slug(name); while (routers.some((x) => x.id === id)) id = slug(name).slice(0, 18) + '-' + Math.random().toString(36).slice(2, 6);
         const r = { id, name, host: c.host, port: c.port, user: c.user, pwEnc, dns };
-        routers.push(r); saveRouters(); await startWorker(r);
+        if (b.adopt) {         // join: take the shared configuration from the router before the collector starts
+          const got = await withApi(c.host, c.port, c.user, c.pw, (api) => store.read(api)).catch(() => null);
+          if (got) { const rc = (got.bundle.content || {}).router || {}; if (rc.name) r.name = String(rc.name).slice(0, 60); if (okDns(rc.dns || '')) r.dns = rc.dns || ''; applyBundle(id, got.bundle, true); }
+        }
+        routers.push(r); saveRouters(); await startWorker(r); setTimeout(() => syncRouter(r).catch(() => {}), 4000);
         sendJson(res, 200, { ok: true, id, identity: t.identity });
+      });
+    }
+    if (u.pathname === '/api/routers/remote-config' && req.method === 'POST') {   // wizard: does this router already carry a shared configuration?
+      return readJson(req, res, async (b) => {
+        const port = Number(b.port || 8728);
+        if (!b.token && (!okHost(b.host) || !okPort(port) || !okUser(b.user))) return sendJson(res, 200, { ok: false, code: 'bad-input' });
+        const c = await credsOf(b);
+        try {
+          const got = await withApi(c.host, c.port, c.user, c.pw, (api) => store.read(api));
+          if (!got) return sendJson(res, 200, { ok: true, found: false });
+          const cc = got.bundle.content || {};
+          sendJson(res, 200, { ok: true, found: true, by: got.by, at: got.at, org: (cc.org && cc.org.name) || '', router: (cc.router && cc.router.name) || '', hasLogo: !!cc.logo });
+        } catch (e) { sendJson(res, 200, { ok: false, code: friendly(e) }); }
+      });
+    }
+    if (u.pathname === '/api/routers/sync' && req.method === 'GET') {
+      const r = routers.find((x) => x.id === u.searchParams.get('id')); if (!r) return sendJson(res, 200, { ok: false });
+      return sendJson(res, 200, Object.assign({ ok: true, host: os.hostname() }, syncInfo[r.id] || { state: 'pending' }));
+    }
+    if (u.pathname === '/api/routers/sync' && req.method === 'POST') {            // "Save to router" / "Load from router" buttons
+      return readJson(req, res, async (b) => {
+        const r = routers.find((x) => x.id === b.id); if (!r) return sendJson(res, 200, { ok: false, error: 'unknown' });
+        const i = await syncRouter(r, b.mode === 'push' ? 'push' : b.mode === 'pull' ? 'pull' : undefined);
+        sendJson(res, 200, Object.assign({ ok: i.state !== 'error' }, i));
       });
     }
     if (u.pathname === '/api/routers/delete' && req.method === 'POST') {
       return readJson(req, res, async (b) => {
         const r = routers.find((x) => x.id === b.id); if (!r) return sendJson(res, 200, { ok: false, error: 'unknown' });
+        let userRemoved = false;
+        if (b.removeUser && /^mtc-/.test(r.user)) {     // sign-out option: also delete this PC's own API user from the router (best effort)
+          try { userRemoved = await withApi(r.host, r.port, r.user, await decrypt(r.pwEnc), async (api) => { const u = await api.run(['/user/print', '=.proplist=.id,name', '?name=' + r.user]); if (!u[0]) return false; await api.run(['/user/remove', '=numbers=' + u[0]['.id']]); return true; }); }
+          catch { userRemoved = false; }
+        }
         stopWorker(r.id); routers = routers.filter((x) => x.id !== r.id); saveRouters();
-        sendJson(res, 200, { ok: true });          // its history folder in the data directory is kept
+        delete syncState[r.id]; delete syncInfo[r.id]; saveSync();
+        sendJson(res, 200, { ok: true, userRemoved });          // its history folder in the data directory is kept
       });
     }
     // static (dashboard files only)
@@ -247,6 +395,7 @@ loadRouters();
 server.listen(PORT, '127.0.0.1', async () => {
   console.log(`Mikrotik Traffic Control on http://127.0.0.1:${PORT}  (${routers.length} router(s), data in ${DATA})`);
   for (const r of routers) await startWorker(r).catch((e) => console.error('start failed', r.id, e.message));
+  setTimeout(() => syncAll().catch(() => {}), 5000); setInterval(() => syncAll().catch(() => {}), 30000);
 });
 const down = () => { for (const id of [...workers.keys()]) stopWorker(id); setTimeout(() => process.exit(0), 300); };
 process.on('SIGINT', down); process.on('SIGTERM', down);

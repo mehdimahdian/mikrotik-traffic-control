@@ -6,8 +6,8 @@
 #   3. turns the API service (port 8728) on for that PC only,
 #   4. lets that PC reach the router's API in the firewall INPUT chain (needed only if your firewall drops everything not listed).
 #
-# BEFORE YOU RUN IT: change the password on the line marked  <== CHANGE ME  (use 16+ random characters; you will type the same
-# password into the program's setup guide under "I already have an API user").
+# The program downloads this file with a generated password already filled in; just run it. (Run by hand? replace the password line below with 16+ random characters.)
+#
 # Run it:  Winbox > New Terminal > paste everything, or upload the file and run  /import file-name=mtc-init.rsc
 # Undo:    /user remove mtc-monitor ; /user group remove mtc ; /ip service set api address="" ; /ip firewall filter remove [find where comment~"mtc-api"]
 
@@ -30,4 +30,4 @@ set api disabled=no port=8728 address=$pc
 /ip firewall filter
 :if ([:len [find where comment~"mtc-api"]] = 0) do={ add chain=input action=accept protocol=tcp dst-port=8728 src-address=$pc comment="[mtc-api] Mikrotik Traffic Control PC -> router API" place-before=0 }
 
-:put "Done. In the program use: this router's address, port 8728, user mtc-monitor and the password you set."
+:put "Done. Go back to the program and press: I ran the script - continue."

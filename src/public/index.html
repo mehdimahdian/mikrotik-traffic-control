@@ -173,7 +173,14 @@ tr.sgdet td.l,tr.sgdet th.l{padding-left:8px}
 .hrs{width:auto;margin:4px 0} .hrs td{white-space:nowrap}
 .hrs td{padding:3px 8px} .hrs input[type=time]{width:130px}
 @media(max-width:900px){.cols2{grid-template-columns:1fr}}
-@media(max-width:700px){.grid2,.form{grid-template-columns:1fr}}
+/* forms / wizard: never wider than the screen, inputs fill their cell (inline grid-template-columns need !important to be overridden) */
+.mbox{max-width:100%;box-sizing:border-box;overflow-x:hidden}
+.form>*,.grid2>*{min-width:0}
+.form input,.form select,.form textarea{width:100%;min-width:0;box-sizing:border-box}
+.mbox .tools>input,.mbox .tools>select{max-width:100%;min-width:0}
+.mbox table{display:block;max-width:100%;overflow-x:auto}
+.rolebtn{flex-wrap:wrap}
+@media(max-width:700px){.grid2,.form{grid-template-columns:1fr!important}.modal{padding:2vh 8px}.mbox{padding:12px}.hrs input[type=time]{width:100px}.mbox .tools{gap:6px}}
 </style>
 </head>
 <body>
@@ -184,7 +191,7 @@ tr.sgdet td.l,tr.sgdet th.l{padding-left:8px}
 <header>
   <div class="brand"><img src="assets/mtc-logo.svg" id="brandlogo" alt="" class="logo" style="height:42px"><h1><span id="orgname">Mikrotik Traffic Control</span><small id="prodname">Mikrotik Traffic Control</small></h1></div>
   <select id="lang" title="Language" style="font-weight:600"><option value="en">English</option><option value="fa">فارسی</option><option value="ar">العربية</option><option value="ru">Русский</option><option value="zh">中文</option></select>
-  <div class="rsel" title="Router"><select id="router"></select><button class="mini" id="manage">Manage routers</button></div>
+  <div class="rsel" title="Router"><select id="router"></select><button class="mini" id="manage">Manage routers</button><button class="mini" id="signout" title="Disconnect from this router and forget the saved login">Sign out</button></div>
   <div class="seg" id="tabs"><button data-v="live" class="on">Live</button><button data-v="staff">Staff</button><button data-v="usage">Usage history</button><button data-v="dest">Destinations</button><button data-v="ext">External IPs</button><button data-v="abuse">Abuse</button><button data-v="sec">Security<span class="badge zero" id="bg-sec">0</span></button><button data-v="blocked">Blocked<span class="badge zero" id="bg-blk">0</span></button><button data-v="pres">Online / Offline<span class="badge zero" id="bg-off">0</span></button><button data-v="privacy">VPN &amp; MACs</button><button data-v="audit">Audit</button><button data-v="reports">Reports</button><button data-v="wifi">Guest Wi-Fi</button><button data-v="setup">Router setup</button><button data-v="config">Configuration</button></div>
   <div class="seg" id="scope" title="Which traffic to count"><button data-v="inet" class="on">Internet</button><button data-v="lan">LAN</button><button data-v="all">All</button></div>
 </header>
@@ -1087,7 +1094,7 @@ async function renderRouterTable() {
   $('#rtbl tbody').innerHTML = S.routers.map((r) => { const st = r.status; const ok = st && st.ok;
     return `<tr><td class="l"><b>${esc(r.name)}</b>${r.id === S.router ? ' <span class="ipx">(shown)</span>' : ''}</td><td class="l">${esc(r.host)}:${r.port}</td><td class="l ipx">${esc(r.user)}</td>
     <td class="l"><span class="dot ${ok ? 'ok' : ''}" style="display:inline-block"></span> <span class="ipx">${ok ? st.conns + ' connections' : esc((st && st.error) || 'starting / no answer')}</span></td>
-    <td><button class="mini" data-show="${esc(r.id)}">show</button> <button class="mini" data-edit="${esc(r.id)}">edit</button> ${S.routers.length > 1 ? `<button class="mini" data-del="${esc(r.id)}">delete</button>` : ''}</td></tr>`; }).join('');
+    <td><button class="mini" data-show="${esc(r.id)}">show</button> <button class="mini" data-edit="${esc(r.id)}">edit</button> <button class="mini" data-del="${esc(r.id)}">sign out</button></td></tr>`; }).join('');
 }
 function openManage() { $('#rmodal').hidden = false; rfReset(); renderRouterTable(); }
 $('#manage').addEventListener('click', openManage);
@@ -1104,12 +1111,23 @@ $('#rtbl tbody').addEventListener('click', async (e) => {
   }
   if (b.dataset.del) {
     const r = S.routers.find((x) => x.id === b.dataset.del);
-    if (!(await uiConfirm('Remove router?', `Remove "${r.name}" from the list?\nIts collected history stays on disk (data\\routers) but is no longer shown.`, { ok: 'Remove', danger: true }))) return;
-    const x = await (await fetch('/api/routers/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id }) })).json();
-    if (!x.ok) { rfMsg(x.error, true); return; }
-    if (S.router === r.id) S.router = ''; await loadRouters(); renderRouterTable();
+    if (await signOut(r)) renderRouterTable();
   }
 });
+// sign out: this PC stops monitoring the router and forgets its saved login (history stays on this PC, the shared configuration stays on the router)
+async function signOut(r) {
+  if (!r) return false;
+  if (!(await uiConfirm('Sign out from this router?', `This PC stops monitoring "${r.name}" and forgets the saved login.\nThe shared configuration stays on the router and the collected history stays on this PC. Sign in again any time.`, { ok: 'Sign out', danger: true }))) return false;
+  const removeUser = /^mtc-/.test(r.user) && await uiConfirm('Also remove this PC\'s API user?', `Delete the user "${r.user}" from the router as well. Choose "Keep" if you plan to sign in again soon.`, { ok: 'Remove user', cancel: 'Keep' });
+  const x = await (await fetch('/api/routers/delete', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id: r.id, removeUser: !!removeUser }) })).json();
+  if (!x.ok) { toast(x.error || 'Failed', 'bad'); return false; }
+  if (S.router === r.id) S.router = '';
+  await loadRouters();
+  toast(__('Signed out.'), 'ok');
+  if (!S.routers.length && typeof wizOpen === 'function') { $('#rmodal').hidden = true; WZ.data.password = ''; WZ.data.token = ''; WZ.data.scriptToken = ''; WZ.data.info = null; WZ.data.discovered = false; WZ.step = 1; wizOpen(); }
+  return true;
+}
+$('#signout').addEventListener('click', () => signOut(S.routers.find((x) => x.id === S.router)));
 function rfBody() { return { id: editId, name: rf('name').value, host: rf('host').value.trim(), port: Number(rf('port').value), user: rf('user').value.trim(), password: rf('pw').value, dns: rf('dns').value.trim() }; }
 async function rfPost(url) { return (await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(rfBody()) })).json(); }
 rf('cancel').addEventListener('click', () => { rfReset(); rf('pw').disabled = false; });

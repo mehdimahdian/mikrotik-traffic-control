@@ -47,8 +47,11 @@ function presetHours(type) {
 }
 
 // ================= error codes -> messages =================
-const ERR = { 'login-failed': 'Login failed: check the user name and password, and that the user may use the API.', refused: 'Connection refused: is the API service enabled on that port (IP > Services > api, port 8728)?',
-  'no-answer': 'No answer from the router: check the address, the port and any firewall in between.', 'no-password': 'Enter the password.', 'bad-input': 'Check the address, port and user name.' };
+const ERR = { 'login-failed': 'Login failed: RouterOS rejected this user name or password.\n- New router? The user is "admin" and the password is empty: leave the password blank.\n- Type the password with an English keyboard layout.\n- The user needs a group with the "api" policy and no address restriction for this PC (System > Users).\n- IP > Services > api must be enabled and allow this PC.',
+  refused: 'The router refuses the connection: the API service is off or uses another port (IP > Services > api, port 8728). Use the preparation script below to enable it.',
+  'no-answer': 'No answer from the router: check the address (is this PC on the same network?), the port and any firewall in between.', unreachable: 'This address cannot be reached from this PC: check the address and your network connection.',
+  'only-script': 'The API and the web interface of this router are closed - only Winbox / SSH answer. Download the preparation script below, paste it into the Winbox "New Terminal" (or an SSH session) and press "I ran the script".',
+  'no-password': 'Enter the password.', 'bad-input': 'Check the address, port and user name.' };
 const errText = (code, fallback) => (ERR[code] ? __(ERR[code]) : code && code.startsWith('error:') ? __('Cannot connect: {msg}', { msg: code.slice(6) }) : fallback || __('Something went wrong.'));
 
 // ================= branding + splash + language =================
@@ -72,10 +75,12 @@ document.querySelectorAll('.yr2').forEach((e) => { e.textContent = new Date().ge
 // ================= first-run wizard =================
 const WZ = { step: 0, data: { host: '192.168.88.1', port: 8728, mode: 'create', user: '', password: '', adminUser: 'admin', adminPassword: '', restrict: true, token: '', info: null, roles: {}, adminIp: '', dns: '', hours: null }, el: null };
 const WSTEPS = ['Welcome', 'Router', 'Networks', 'Working hours', 'Finish'];
+const FLOW = [1, 0, 2, 3, 4];   // order shown: connect first; the welcome questions only for a router that is not set up yet
+const JOIN = 5;   // virtual step: the router already carries a shared configuration
 function wizOpen() {
   if (WZ.el) return;
   WZ.el = document.createElement('div'); WZ.el.className = 'modal'; WZ.el.style.zIndex = 150; document.body.appendChild(WZ.el);
-  WZ.data.hours = presetHours(APP.settings.org.type); wizDraw();
+  WZ.data.hours = presetHours(APP.settings.org.type); WZ.step = 1; wizDraw();
 }
 function wizClose() { if (WZ.el) { WZ.el.remove(); WZ.el = null; } }
 function wizDraw() {
@@ -84,23 +89,25 @@ function wizDraw() {
       <div class="form" style="grid-template-columns:1fr 1fr"><label>Language<select id="wz-lang">${Object.entries(I18N.langs).map(([c, l]) => `<option value="${c}" ${c === I18N.lang ? 'selected' : ''} data-noi18n="1">${l.name}</option>`).join('')}</select></label>
       <label>Organization name<input id="wz-org" value="${esc(APP.settings.org.name || '')}" placeholder="e.g. Sunrise Cafe"></label>
       <label>Type of business (sets default working hours)<select id="wz-type">${Object.entries(TYPE_NAMES).map(([c, n]) => `<option value="${c}" ${c === APP.settings.org.type ? 'selected' : ''}>${n}</option>`).join('')}</select></label></div>`,
-    1: () => `<p>Enter the address of your router. The program talks to it through the RouterOS API (port 8728); it never needs the router's Winbox or web password stored.</p>
-      <div class="form" style="grid-template-columns:2fr 1fr"><label>Router address<input id="wz-host" value="${esc(d.host)}" placeholder="192.168.88.1"></label><label>API port<input id="wz-port" value="${d.port}" inputmode="numeric"></label></div>
-      <div class="tools" style="margin:10px 0"><label class="ipx"><input type="radio" name="wz-mode" value="create" ${d.mode === 'create' ? 'checked' : ''}> Create a dedicated API user for me (uses an administrator login once; recommended)</label></div>
-      <div class="tools" style="margin:0 0 6px"><label class="ipx"><input type="radio" name="wz-mode" value="own" ${d.mode === 'own' ? 'checked' : ''}> I already have an API user</label></div>
-      <div id="wz-create" class="form" style="grid-template-columns:1fr 1fr"><label>Router administrator user<input id="wz-au" value="${esc(d.adminUser)}" autocomplete="off"></label><label>Administrator password (used once, never saved)<input id="wz-ap" type="password" autocomplete="off"></label>
-        <label class="ipx" style="grid-column:1/-1;flex-direction:row;gap:6px;align-items:center"><input type="checkbox" id="wz-rs" ${d.restrict ? 'checked' : ''}> Only allow the new user to log in from this PC</label></div>
-      <div id="wz-own" class="form" style="grid-template-columns:1fr 1fr"><label>API user<input id="wz-u" value="${esc(d.user)}" autocomplete="off"></label><label>Password<input id="wz-p" type="password" autocomplete="off"></label></div>
-      <details style="margin-top:10px"><summary class="ipx" style="cursor:pointer">The router refuses the connection / brand-new router</summary>
-        <div class="ipx" style="margin-top:6px">On a new router the API service may be off or blocked. Download the preparation script, open <b>System &gt; Scripts</b> or the <b>New Terminal</b> in Winbox, paste it (or upload it and run <code>/import file-name=mtc-init.rsc</code>), then continue here. It enables the API service for this PC only and creates the API user.</div>
-        <div class="tools" style="margin-top:6px"><input id="wz-pcip" placeholder="Address of this PC, e.g. 192.168.88.10" style="min-width:260px"><a class="btn" id="wz-script" href="#" style="text-decoration:none">Download mtc-init.rsc</a></div></details>
-      <div class="warnbar" id="wz-err" hidden style="margin-top:10px"></div>`,
+    1: () => `<p>Connect to your router. The address is found automatically and every step is checked for you.</p>
+      <div class="form" style="grid-template-columns:2fr 1fr"><label>Router address<input id="wz-host" value="${esc(d.host)}" placeholder="192.168.88.1" autocomplete="off"></label><label>API port<input id="wz-port" value="${d.port}" inputmode="numeric"></label></div>
+      <div class="ipx wz-probe" id="wz-probe">&nbsp;</div>
+      <div class="form" style="grid-template-columns:1fr 1fr;margin-top:8px"><label>Router user<input id="wz-u" value="${esc(d.user || 'admin')}" autocomplete="off"></label><label>Password (empty on a brand-new router)<input id="wz-p" type="password" value="${esc(d.password)}" autocomplete="off"></label></div>
+      <label class="ipx" style="display:flex;gap:6px;align-items:center;margin-top:4px"><input type="checkbox" id="wz-show"> Show the password (check the keyboard language)</label>
+      <details id="wz-fix" style="margin-top:10px"><summary class="ipx" style="cursor:pointer">The router refuses the connection / brand-new router</summary>
+        <div class="ipx" style="margin-top:6px">On a new router the API service may be off or blocked. Download the preparation script, open <b>System &gt; Scripts</b> or the <b>New Terminal</b> in Winbox, paste it (or upload it and run <code>/import file-name=mtc-init.rsc</code>), then continue here. It enables the API service for this PC only and creates the API user. Works with Winbox, SSH or the web terminal - any way you can reach the router.</div>
+        <div class="tools" style="margin-top:6px"><input id="wz-pcip" placeholder="Address of this PC, e.g. 192.168.88.10" style="min-width:260px"><a class="btn" id="wz-script" href="#" style="text-decoration:none">Download mtc-init.rsc</a><button class="btn pri" id="wz-ran" hidden>I ran the script - continue</button></div></details>
+      <div class="warnbar" id="wz-err" hidden style="margin-top:10px;white-space:pre-line"></div>`,
     2: () => { const I = d.info; return `<p>Which networks are used by whom? <b>Staff</b> = your own people and devices, <b>Guests</b> = visitors, customers, residents' guests. Devices are grouped by the router network they are on.</p>
       <table><thead><tr><th class="l">Network</th><th class="l">Address</th><th class="l">DHCP</th><th class="l">Used by</th></tr></thead><tbody>${I.networks.map((n) => {
         const r = d.roles[n.iface] || 'ignore'; return `<tr><td class="l"><b>${esc(n.iface)}</b> <span class="ipx">${esc(n.comment)}</span></td><td class="l ipx">${esc(n.address)}</td><td class="l">${n.hasDhcp ? 'yes' : 'no'}</td><td class="l">${n.isWan ? '<span class="chip">Internet (WAN)</span>' : `<span class="rolebtn" data-if="${esc(n.iface)}">${['staff', 'guest', 'ignore'].map((x) => `<label class="${r === x ? 'on' : ''}"><input type="radio" name="r-${esc(n.iface)}" value="${x}" ${r === x ? 'checked' : ''}>${x === 'staff' ? 'Staff' : x === 'guest' ? 'Guests' : 'Ignore'}</label>`).join('')}</span>`}</td></tr>`; }).join('')}</tbody></table>
       <div class="form" style="grid-template-columns:1fr 1fr;margin-top:12px"><label>Admin PC address (never blocked or limited)<input id="wz-adm" value="${esc(d.adminIp)}"></label><label>Internal DNS server for PC names (optional)<input id="wz-dns" value="${esc(d.dns)}" placeholder="e.g. 192.168.88.2"></label></div>
       ${I.warnings.includes('no-wan') ? '<div class="warnbar" style="margin-top:8px">No internet interface was found (no active default route). Traffic will be counted as internal until the router has a default route.</div>' : ''}`; },
     3: () => `<p>When are your people at work? Usage outside these hours is reported separately. Hotels, hospitals and shops that never close choose 24/7.</p><div id="wz-hours"></div>`,
+    5: () => { const R = d.remote || {}; return `<p>This router is <b>already set up</b>${R.by ? ' (saved from ' + esc(R.by) + (R.at ? ', ' + esc(new Date(R.at).toLocaleString()) : '') + ')' : ''}. Its organization, logo, networks, limits and names are stored on the router, so you only need to join - no setup questions.</p>
+      <ul><li>Organization: <b>${esc(R.org || '-')}</b></li><li>Router: <b>${esc(R.router || d.info.identity || d.host)}</b> (${esc(d.host)})</li></ul>
+      <div class="tools"><a href="#" id="wz-scratch">Set up from scratch instead</a></div>
+      <div class="warnbar" id="wz-err" hidden style="margin-top:10px"></div>`; },
     4: () => { const I = d.info; return `<p>Ready. This will save the router, start collecting traffic and apply your choices:</p>
       <ul><li>Router: <b>${esc(I.identity || d.host)}</b> (${esc(d.host)}${I.version ? ', RouterOS ' + esc(I.version) : ''})</li>
       <li>Organization: <b>${esc(APP.settings.org.name || '-')}</b></li>
@@ -110,23 +117,57 @@ function wizDraw() {
       <div class="ipx">After this, open <b>Router setup</b> to add the block rules, speed limits and the guest Wi-Fi portal on the router. Each change is previewed first and a backup is saved on the router.</div>
       <div class="warnbar" id="wz-err" hidden style="margin-top:10px"></div>`; },
   }[s]();
-  WZ.el.innerHTML = `<div class="mbox" style="width:min(720px,100%)"><div class="dh"><div class="t"><b>Setup guide</b> <span class="ipx">- ${__('Step {n} of {total}', { n: s + 1, total: WSTEPS.length })}: ${__(WSTEPS[s])}</span></div></div>
-    <div class="wizdots">${WSTEPS.map((_, i) => `<i class="${i <= s ? 'on' : ''}"></i>`).join('')}</div>${body}
-    <div class="tools" style="margin-top:14px;justify-content:space-between"><span><button class="btn" id="wz-back" ${s === 0 ? 'hidden' : ''}>Back</button></span><span><span class="ipx" id="wz-msg"></span> <button class="btn pri" id="wz-next">${s === WSTEPS.length - 1 ? 'Finish' : s === 1 ? 'Test and continue' : 'Next'}</button></span></div></div>`;
+  WZ.el.innerHTML = `<div class="mbox" style="width:min(720px,100%)"><div class="dh"><div class="t"><b>Setup guide</b> <span class="ipx">- ${s === JOIN ? __('Join this router') : __('Step {n} of {total}', { n: FLOW.indexOf(s) + 1, total: WSTEPS.length }) + ': ' + __(WSTEPS[s])}</span></div></div>
+    <div class="wizdots">${WSTEPS.map((_, i) => `<i class="${i <= FLOW.indexOf(s) || s === JOIN ? 'on' : ''}"></i>`).join('')}</div>${body}
+    <div class="tools" style="margin-top:14px;justify-content:space-between"><span><button class="btn" id="wz-back" ${s === 1 ? 'hidden' : ''}>Back</button></span><span><span class="ipx" id="wz-msg"></span> ${s === 2 || s === 3 ? '<button class="btn" id="wz-quick">Use recommended settings and finish</button> ' : ''}<button class="btn pri" id="wz-next">${s === JOIN ? 'Join' : s === WSTEPS.length - 1 ? 'Finish' : s === 1 ? 'Test and continue' : 'Next'}</button></span></div></div>`;
   wizBind();
+}
+// live check of the address (is the API port open?) and automatic router discovery (this PC's gateway)
+async function wizProbe() {
+  const el = $('#wz-probe'); if (!el) return; const host = wv('wz-host'), port = Number(wv('wz-port') || 8728);
+  if (!host) { el.textContent = ''; return; }
+  el.style.color = ''; el.textContent = __('Checking...');
+  let r; try { r = await postJson('/api/routers/probe', { host, port }); } catch { return; }
+  if (!$('#wz-probe') || wv('wz-host') !== host) return;
+  const P = r.ports || {}, on = (k) => P[k] === 'open', web = on('http') || on('https');
+  const ways = [on('api') && 'API', web && 'Web', on('ssh') && 'SSH', on('winbox') && 'Winbox'].filter(Boolean).join(', ');
+  el.style.color = !ways ? 'var(--bad)' : r.ok ? 'var(--ok)' : 'var(--mute)';
+  el.textContent = !ways ? __('No router answers at this address.') : r.ok ? __('Router found. Ways in: {list}', { list: ways })
+    : web ? __('Router found ({list}). The API is closed: it will be switched on through the web interface.', { list: ways }) : __('Router found ({list}), but the API and the web interface are closed. Use the preparation script below.', { list: ways });
+  if (r.pc && $('#wz-pcip') && !$('#wz-pcip').value) $('#wz-pcip').value = r.pc;
+  if (ways && !r.ok && !web) { const f = $('#wz-fix'); if (f) f.open = true; }
+}
+async function wizDiscover() {
+  const el = $('#wz-probe'); if (el) el.textContent = __('Looking for your router...');
+  let r; try { r = await (await fetch('/api/discover', { cache: 'no-store' })).json(); } catch { return wizProbe(); }
+  const best = (r.candidates || []).find((c) => c.api === 'open') || (r.gateway && { host: r.gateway });
+  if (best && $('#wz-host') && $('#wz-host').value.trim() === WZ.data.host) { $('#wz-host').value = best.host; WZ.data.host = best.host; }
+  wizProbe();
 }
 const wv = (id) => ($('#' + id) ? $('#' + id).value.trim() : '');
 function wizBind() {
   const d = WZ.data, s = WZ.step;
   if (s === 0) $('#wz-lang').addEventListener('change', async (e) => { $('#lang').value = e.target.value; await I18N.set(e.target.value); d.hours = presetHours($('#wz-type').value); wizDraw(); });
   if (s === 1) {
-    const toggle = () => { const c = $('input[name=wz-mode]:checked').value === 'create'; $('#wz-create').style.display = c ? '' : 'none'; $('#wz-own').style.display = c ? 'none' : ''; }; toggle();
-    $$('input[name=wz-mode]').forEach((r) => r.addEventListener('change', toggle));
-    $('#wz-script').addEventListener('click', (e) => { e.preventDefault(); const ip = wv('wz-pcip'); if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { toast(__('Enter the address of this PC first'), 'bad'); return; } location.href = '/api/init-script?ip=' + encodeURIComponent(ip); });
+    $('#wz-script').addEventListener('click', async (e) => {
+      e.preventDefault(); const ip = wv('wz-pcip'); if (!/^\d{1,3}(\.\d{1,3}){3}$/.test(ip)) { toast(__('Enter the address of this PC first'), 'bad'); return; }
+      try {
+        const r = await fetch('/api/init-script?ip=' + encodeURIComponent(ip) + '&host=' + encodeURIComponent(wv('wz-host')) + '&port=' + encodeURIComponent(wv('wz-port') || 8728));
+        d.scriptToken = r.headers.get('X-MTC-Token') || ''; const a = document.createElement('a'); a.href = URL.createObjectURL(await r.blob()); a.download = 'mtc-init.rsc';
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000); $('#wz-ran').hidden = false;
+      } catch { toast(__('Something went wrong.'), 'bad'); }
+    });
+    $('#wz-ran').addEventListener('click', () => { d.useScript = true; $('#wz-next').click(); });
+    wizProbe(); let tm = null; const again = () => { clearTimeout(tm); tm = setTimeout(wizProbe, 600); };
+    $('#wz-host').addEventListener('input', again); $('#wz-port').addEventListener('input', again);
+    if (!d.discovered) { d.discovered = true; wizDiscover(); }
+    $('#wz-p').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#wz-next').click(); });
   }
   if (s === 2) $$('.rolebtn input').forEach((r) => r.addEventListener('change', (e) => { const g = e.target.closest('.rolebtn'); d.roles[g.dataset.if] = e.target.value; $$('label', g).forEach((l) => l.classList.toggle('on', $('input', l).checked)); }));
   if (s === 3) HoursEditor.render($('#wz-hours'), d.hours);
-  $('#wz-back').addEventListener('click', () => { WZ.step = Math.max(0, WZ.step - 1); wizDraw(); });
+  if (s === JOIN) $('#wz-scratch').addEventListener('click', (e) => { e.preventDefault(); d.remote = null; WZ.step = 2; wizDraw(); });
+  $('#wz-back').addEventListener('click', () => { WZ.step = s === JOIN || s === 0 ? 1 : s === 2 ? 0 : Math.max(0, s - 1); wizDraw(); });
+  if ($('#wz-quick')) $('#wz-quick').addEventListener('click', () => { if (s === 2) { d.adminIp = wv('wz-adm'); d.dns = wv('wz-dns'); } WZ.step = 4; wizDraw(); });
   $('#wz-next').addEventListener('click', wizNext);
 }
 async function wizNext() {
@@ -136,33 +177,52 @@ async function wizNext() {
       APP.settings.org = { name: wv('wz-org'), type: $('#wz-type').value }; d.hours = presetHours(APP.settings.org.type);
       await postJson('/api/settings', { org: APP.settings.org, lang: I18N.lang }); applyBrand();
     } else if (s === 1) {
-      btn.disabled = true; msg.textContent = __('Connecting...'); err('');
-      d.host = wv('wz-host'); d.port = Number(wv('wz-port') || 8728); d.mode = $('input[name=wz-mode]:checked').value;
-      let body = { host: d.host, port: d.port };
-      if (d.mode === 'create') {
-        const p = await postJson('/api/routers/provision', { host: d.host, port: d.port, adminUser: wv('wz-au'), adminPassword: $('#wz-ap').value, restrict: $('#wz-rs').checked });
-        if (!p.ok) { err(errText(p.code)); btn.disabled = false; msg.textContent = ''; return; }
-        d.token = p.token; d.pcIp = p.pcAddress; body = { token: p.token, host: d.host, port: d.port }; d.user = p.user; d.password = '';
-      } else { d.user = wv('wz-u'); d.password = $('#wz-p').value; d.token = ''; body = { host: d.host, port: d.port, user: d.user, password: d.password }; }
-      const r = await postJson('/api/routers/inspect', body);
-      if (!r.ok) { err(errText(r.code)); btn.disabled = false; msg.textContent = ''; return; }
+      btn.disabled = true; err('');
+      d.host = wv('wz-host'); d.port = Number(wv('wz-port') || 8728); d.user = wv('wz-u') || 'admin'; d.password = $('#wz-p').value; 
+      const fail = (code) => { err(errText(code)); if (code === 'refused' || code === 'only-script') { const f = $('#wz-fix'); if (f) f.open = true; } btn.disabled = false; msg.textContent = ''; };
+      msg.textContent = __('Checking the connection...');
+      const viaScript = !!(d.useScript && d.scriptToken); d.useScript = false;
+      const pr = await postJson('/api/routers/probe', { host: d.host, port: d.port }), PP = pr.ports || {};
+      if (!viaScript && !pr.ok && PP.http !== 'open' && PP.https !== 'open') return fail(Object.values(PP).includes('open') ? 'only-script' : pr.code);
+      msg.textContent = __('Signing in...');
+      let body;
+      // automatic: sign in with this account; if it may manage users, create a dedicated limited API user (its password is generated and kept encrypted);
+      // otherwise keep using this account directly
+      const p = viaScript ? { ok: true, token: d.scriptToken } : await postJson('/api/routers/provision', { host: d.host, port: d.port, adminUser: d.user, adminPassword: d.password, restrict: false });
+      if (p.ok && p.via === 'rest') toast(__('The API service was switched on through the router web interface.'), 'ok', 7000);
+      if (p.ok) { d.token = p.token; d.pcIp = p.pcAddress; body = { token: p.token, host: d.host, port: d.port }; }
+      else if (['login-failed', 'refused', 'no-answer', 'unreachable', 'bad-input'].includes(p.code)) return fail(p.code);
+      else { d.token = ''; body = { host: d.host, port: d.port, user: d.user, password: d.password }; }
+      msg.textContent = __('Reading the router...');
+      const r = await postJson('/api/routers/inspect', body); if (!r.ok) return fail(r.code);
       d.info = r.info; d.adminIp = d.adminIp || r.info.pcAddress || '';
       for (const n of r.info.networks) if (!(n.iface in d.roles)) d.roles[n.iface] = n.isWan || !n.private ? 'ignore' : /guest|wifi|wlan|visitor|hotspot|public/i.test(n.iface + ' ' + n.comment) ? 'guest' : 'staff';
+      d.remote = null;
+      try { const rc = await postJson('/api/routers/remote-config', body); if (rc.ok && rc.found) { d.remote = rc; msg.textContent = __('This router is already set up: loading its configuration...'); await wizFinish(btn, msg, err, true); return; } } catch { /* no shared configuration: continue normally */ }
       if (!r.info.policy.ok) { err(__('The login lacks permissions: {list}. Continue only if you do not need blocking and speed limits.', { list: r.info.policy.missing.join(', ') })); }
     } else if (s === 2) { d.adminIp = wv('wz-adm'); d.dns = wv('wz-dns'); if (d.adminIp && !/^\d{1,3}(\.\d{1,3}){3}$/.test(d.adminIp)) { toast(__('The admin PC address must look like 192.168.88.10'), 'bad'); return; } }
     else if (s === 3) d.hours = HoursEditor.read($('#wz-hours'));
     else if (s === 4) { await wizFinish(btn, msg, err); return; }
-    btn.disabled = false; msg.textContent = ''; WZ.step = s + 1; wizDraw();
+    else if (s === JOIN) { await wizFinish(btn, msg, err, true); return; }
+    btn.disabled = false; msg.textContent = ''; WZ.step = s === 1 ? 0 : s === 0 ? 2 : s + 1; wizDraw();
   } catch (e) { btn.disabled = false; msg.textContent = ''; err(__('Something went wrong.') + ' ' + (e.message || '')); }
 }
-async function wizFinish(btn, msg, err) {
+async function wizFinish(btn, msg, err, join) {
   const d = WZ.data; btn.disabled = true; msg.textContent = __('Saving...'); err('');
   const body = { name: (d.info.identity || APP.settings.org.name || 'Router').slice(0, 60), host: d.host, port: d.port, dns: d.dns };
   if (d.token) body.token = d.token; else { body.user = d.user; body.password = d.password; }
+  if (join) body.adopt = true;
   const r = await postJson('/api/routers', body);
   if (!r.ok) { err(errText(r.code)); btn.disabled = false; msg.textContent = ''; return; }
   const base = '/api/r/' + encodeURIComponent(r.id) + '/api';
   for (let i = 0; i < 40; i++) { try { const st = await (await fetch(base + '/status', { cache: 'no-store' })).json(); if (st && st.ok !== undefined) break; } catch { /* collector still starting */ } await new Promise((x) => setTimeout(x, 400)); }
+  if (join) {
+    try { APP.settings = await (await fetch('/api/settings', { cache: 'no-store' })).json(); } catch { /* ignore */ }
+    if (APP.settings.lang && !localStorage.getItem('mtc.lang')) { $('#lang').value = APP.settings.lang; await I18N.set(APP.settings.lang); }
+    applyBrand(); d.password = ''; d.token = ''; wizClose();
+    await loadRouters(); S.router = r.id; $('#router').value = r.id; showView('live');
+    toast(__('Joined. The configuration was loaded from the router.'), 'ok', 9000); return;
+  }
   const staff = Object.entries(d.roles).filter(([, v]) => v === 'staff').map(([k]) => k), guest = Object.entries(d.roles).filter(([, v]) => v === 'guest').map(([k]) => k);
   const c = await postJson(base + '/config', { staffNetworks: staff, guestNetworks: guest, sec: { adminIps: d.adminIp ? [d.adminIp] : [] }, abuse: { hours: d.hours } });
   if (!c.ok) toast(__('Router saved, but the networks could not be stored: {msg}', { msg: c.error || '' }), 'bad');
@@ -197,7 +257,14 @@ window.renderSetup = async function () {
       <table><thead><tr><th class="l">Change</th><th class="l">State</th></tr></thead><tbody>${(R.status || []).map((x) => `<tr style="cursor:default"><td class="l">${esc(x.text)}</td><td class="l">${x.ok ? '<span class="chip">done</span>' : '<span class="chip medium">missing</span>'}</td></tr>`).join('') || '<tr style="cursor:default"><td colspan="2" class="empty">Nothing selected above.</td></tr>'}</tbody></table>
       ${(R.warnings || []).map((w) => `<div class="warnbar" style="margin-top:8px">${esc(w)}</div>`).join('')}
       ${R.ops && R.ops.length ? `<h3 style="margin:12px 0 4px;font-size:13px">Will be changed when you press Apply</h3><pre style="white-space:pre-wrap;font-size:12px;background:var(--hover);padding:10px;border-radius:8px;margin:0" data-noi18n="1">${esc(R.ops.join('\n'))}</pre>` : ''}</div>
+    <div class="panel"><h2>Shared configuration <span class="ipx" id="sy-state"></span></h2>
+      <div class="ipx">Your organization name, logo, networks, IP and user management, limits and device names are also saved <b>on the router</b> (in its scripts, named <code>mtc-cfg-...</code>) and kept in step automatically. Another PC only has to log in with its own account and gets the same settings - no setup guide. Router passwords are never stored there.</div>
+      <div class="tools" style="margin-top:8px"><button class="btn" id="sy-push">Save to router now</button><button class="btn" id="sy-pull">Load from router</button><span class="ipx" id="sy-msg"></span></div></div>
     <div class="panel"><h2>Next steps</h2><div class="ipx">Speed limits and the daily usage quota: <a href="#" id="su-go-cfg">Configuration &gt; Bandwidth control</a>. Visitor Wi-Fi with access codes: <a href="#" id="su-go-wifi">Guest Wi-Fi</a>. Both create only tagged objects and keep a way back.</div></div>`;
+  const syShow = (i) => { $('#sy-state').textContent = i.state === 'error' ? __('Cannot reach the router') : i.at ? __('Last saved by {who}, {when}', { who: i.by || '?', when: new Date(i.at).toLocaleString() }) : ''; };
+  fetch('/api/routers/sync?id=' + encodeURIComponent(S.router), { cache: 'no-store' }).then((x) => x.json()).then(syShow).catch(() => {});
+  const syDo = async (mode) => { $('#sy-msg').textContent = __('Working...'); const x = await postJson('/api/routers/sync', { id: S.router, mode }); syShow(x); $('#sy-msg').textContent = x.ok ? __('Done.') : __('Failed: {msg}', { msg: x.error || '' }); };
+  $('#sy-push').addEventListener('click', () => syDo('push')); $('#sy-pull').addEventListener('click', () => syDo('pull'));
   const tg = () => { $('#su-guest').style.display = $('.su-p[data-k=guest]').checked ? '' : 'none'; }; tg(); $$('.su-p').forEach((x) => x.addEventListener('change', tg));
   $('#su-go-cfg').addEventListener('click', (e) => { e.preventDefault(); showView('config'); }); $('#su-go-wifi').addEventListener('click', (e) => { e.preventDefault(); showView('wifi'); });
   const collect = () => ({ parts: Object.fromEntries($$('.su-p').map((x) => [x.dataset.k, x.checked])), wan: c.wan, guest: { iface: $('#su-if').value, address: $('#su-addr').value.trim(), dns: $('#su-dns').value.trim(), leaseTime: $('#su-lease').value.trim(), isolate: $('#su-iso').checked, masquerade: $('#su-nat').checked } });

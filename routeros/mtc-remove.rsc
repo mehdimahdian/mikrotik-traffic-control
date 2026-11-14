@@ -16,4 +16,5 @@
 # Optional, by hand:
 #   /queue simple remove [find where name~"^mtc-"] ; /queue type remove [find where name~"^mtc-"]
 #   /ip hotspot remove [find where name="mtc-hotspot"] ; /ip hotspot profile remove [find where name="mtc-guest"]
-#   /user remove mtc-monitor ; /user group remove mtc ; /ip service set api address=""
+#   /system script remove [find where name~"^mtc-cfg-"]   (the shared configuration stored by the program)
+#   /user remove [find where comment~"Mikrotik Traffic Control"] ; /user group remove mtc ; /ip service set api address=""
