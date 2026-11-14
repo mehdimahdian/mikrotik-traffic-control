@@ -10,6 +10,7 @@ All notable changes to this project. Format based on [Keep a Changelog](https://
 * Sign in any way you can reach the router: the wizard shows which ways answer (API, web, SSH, Winbox). If the API is off but the web interface (REST, RouterOS 7) works, the program logs in there, switches the API on and creates its own user; for Winbox / SSH it offers a personalised script and an "I ran the script" button.
 * **Sign out** button (header and Manage routers): forgets the saved login and stops monitoring; optionally also removes this PC's API user from the router. History and the shared configuration stay.
 * Wizard and forms no longer overflow or misalign on narrow screens.
+* Persian, Arabic, Russian and Chinese translations for the new sign-in wizard, shared configuration and sign out.
 
 ## 1.0.0 - 2026-11-10
 

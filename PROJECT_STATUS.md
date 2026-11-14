@@ -15,5 +15,5 @@ this file, `CLAUDE.md` and `TODO.md`. 25 tests pass, syntax check passes; fa mis
 |---|---|
 | Released | **1.0.0** (2026-11-10), Windows installer + portable zip on GitHub Releases |
 | Unreleased | see `CHANGELOG.md` *Unreleased* |
-| Languages (`i18n:check`, 939 strings) | en complete; fa 813 (126 missing); ar, ru, zh 791 (148 missing each) |
+| Languages | en, fa, ar, ru, zh: every user-visible string translated (2026-11-14); `i18n:check` reports ~114 non-text extractor hits per language |
 | Git | `main`, public `github.com/mehdimahdian/mikrotik-traffic-control` |
