@@ -11,7 +11,7 @@ Open work, in order.
 1. **Translations** (`npm run i18n:check`): fa misses 126 of 939 strings, ar, ru and zh 148 each. Persian first (there
    is a Persian README edition), then the others, or mark the gap in the README.
 2. **Release 1.1.0** with the *Unreleased* notes (shared configuration, per-PC API users, sign-in, sign out), per
-   `docs/RELEASING.md`, once the owner has pushed `main`.
+   `docs/RELEASING.md`.
 
 ## Next
 
